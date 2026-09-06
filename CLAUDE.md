@@ -803,7 +803,7 @@ through a `.deb` release — bump `debPack/control`, rebuild, publish, and bump
 work: `install_xensevr_service()` skips a `.deb` whose version already matches
 what dpkg reports.
 
-Two consequences worth remembering:
+Three consequences worth remembering:
 
 - **nlohmann comes from conda** (`nlohmann_json=3.11.3` in
   `conda_environment.yaml`, `find_package`d by the pybind CMakeLists).
@@ -813,6 +813,15 @@ Two consequences worth remembering:
 - **`setup.py:sdk_version()` asks dpkg**, not a submodule tag. The `.deb` is not
   a proxy for the SDK, it _is_ where the SDK came from — so `pip list` and the
   installed daemon can no longer disagree.
+- **The pybind CMakeLists does not branch on `aarch64`.** It used to point an
+  arm64 build at `include/aarch64` / `lib/aarch64`, left over from when the
+  submodule staged a per-arch tree. `install_pico4()` picks `SDK/x64` or
+  `SDK/arm64` itself and stages flat, so nothing has created those directories
+  since — and CMake does not treat a missing include directory as an error, so
+  an arm64 host configured cleanly and then died at compile time with
+  `PXREARobotSDK.h: No such file or directory`. arm64 is a live path, not dead
+  code: `install_xensevr_service()` routes arm64 hosts to v0.1.0 precisely
+  because that release has an arm64 asset.
 
 To work on the C SDK itself, clone `XenseRobotics-AI/XenseVR-PC-Service` separately. Its
 Windows and aarch64 trees were pruned; the Linux Unity demo lives as a release
