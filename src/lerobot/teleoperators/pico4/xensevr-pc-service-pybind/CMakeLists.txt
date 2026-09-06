@@ -5,7 +5,7 @@ project(XenseVR_PC_Service_PYBIND11 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-cmake_host_system_information(RESULT ISA_NAME QUERY OS_PLATFORM) # Added: Important for UNIX specific logic
+cmake_host_system_information(RESULT ISA_NAME QUERY OS_PLATFORM) # Diagnostic only — nothing branches on it
 message(STATUS "OS_PLATFORM (ISA_NAME): ${ISA_NAME}")
 
 include(GNUInstallDirs) # Add this line
@@ -36,18 +36,17 @@ if(WIN32)
 endif()
 
 if(UNIX)
-  # ISA_NAME is set by cmake_host_system_information above
-  if(ISA_NAME STREQUAL "aarch64")
-    target_include_directories(xensevr_pc_service_sdk PUBLIC
-        ${PROJECT_SOURCE_DIR}/include/aarch64
-    )
-    target_link_directories(xensevr_pc_service_sdk PUBLIC ${PROJECT_SOURCE_DIR}/lib/aarch64)
-  else()
-    target_include_directories(xensevr_pc_service_sdk PUBLIC
-        ${PROJECT_SOURCE_DIR}/include
-    )
-    target_link_directories(xensevr_pc_service_sdk PUBLIC ${PROJECT_SOURCE_DIR}/lib)
-  endif()
+  # No per-architecture subdirectory: install_pico4() picks SDK/x64 or
+  # SDK/arm64 out of the installed .deb and stages the result flat into
+  # include/ and lib/, so what lands here is already the right build for this
+  # host. The aarch64 branch that used to live here looked in include/aarch64,
+  # which nothing has created since the SDK stopped coming from the submodule —
+  # an arm64 build configured cleanly and then failed to compile with
+  # "PXREARobotSDK.h: No such file or directory".
+  target_include_directories(xensevr_pc_service_sdk PUBLIC
+      ${PROJECT_SOURCE_DIR}/include
+  )
+  target_link_directories(xensevr_pc_service_sdk PUBLIC ${PROJECT_SOURCE_DIR}/lib)
   target_link_libraries(xensevr_pc_service_sdk PUBLIC
       PXREARobotSDK
   )
