@@ -22,7 +22,7 @@ Verifies:
   - meta/tasks.parquet exists
   - episodes metadata matches info.json episode count
   - data parquet files: row count, index continuity, frame_index continuity, NaN check
-  - video files: existence, frame count alignment with parquet, fps, resolution
+  - video files: existence, exact frame count vs parquet (short = error, surplus = warning), fps, resolution
   - camera format: TacCap 6-camera (no headset) vs 8-camera (headset)
 
 Examples:
@@ -475,14 +475,44 @@ def check_videos(
             expected_frames_in_file = int(all_eps_in_file["length"].sum())
             nb_frames = int(stream.get("nb_frames", -1))
             ep_list = sorted(all_eps_in_file["episode_index"].tolist())
-            _check(
-                abs(nb_frames - expected_frames_in_file) <= len(all_eps_in_file) * 2,
-                f"{video_key} file-{file_idx:03d}: {nb_frames} frames (expected ~{expected_frames_in_file}, eps={ep_list})",
-                f"{video_key} file-{file_idx:03d}: frame count mismatch ({nb_frames} vs expected ~{expected_frames_in_file}, eps={ep_list})",
-                errors,
-                warnings,
-                warn=True,
-            )
+            diff = nb_frames - expected_frames_in_file
+
+            # Exact equality, split by direction.  The previous rule allowed
+            # ``abs(diff) <= len(all_eps_in_file) * 2`` -- a relative tolerance
+            # inherited from upstream LeRobot that does not match how this stack
+            # records: measured over 1,810 video files, 1,806 (99.8%) match the
+            # declared frame count *exactly*, and the ones that do not are off by
+            # ~634 frames per episode, i.e. 300x the old tolerance.  So the old
+            # rule neither protected against the real failure nor covered a real
+            # source of jitter -- it only hid small genuine defects such as a
+            # stream that is 2 frames short at the tail.
+            #
+            # The two directions are not equally serious:
+            #   * fewer frames than declared -> episodes reference frames that do
+            #     not exist; decoding runs past the end of the stream.  ERROR.
+            #   * more frames than declared  -> leftover frames no episode refers
+            #     to (episodes dropped without re-encoding the shared mp4).
+            #     Every declared frame is still retrievable.  WARNING.
+            if diff < 0:
+                _check(
+                    False,
+                    "",
+                    f"{video_key} file-{file_idx:03d}: {nb_frames} frames but episodes declare "
+                    f"{expected_frames_in_file} ({-diff} missing, eps={ep_list})",
+                    errors,
+                    warnings,
+                )
+            else:
+                _check(
+                    diff == 0,
+                    f"{video_key} file-{file_idx:03d}: {nb_frames} frames (eps={ep_list})",
+                    f"{video_key} file-{file_idx:03d}: {nb_frames} frames, {diff} more than the "
+                    f"{expected_frames_in_file} episodes declare -- unreferenced leftover frames "
+                    f"(eps={ep_list})",
+                    errors,
+                    warnings,
+                    warn=True,
+                )
 
 
 def classify_camera_format(info: dict) -> tuple[str | None, list[str], list[str]]:
