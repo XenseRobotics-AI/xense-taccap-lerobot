@@ -53,7 +53,12 @@ from lerobot.datasets.utils import (
     write_stats,
     write_tasks,
 )
-from lerobot.datasets.video_utils import encode_video_frames, get_video_info
+from lerobot.datasets.video_utils import (
+    _get_codec_options,
+    encode_video_frames,
+    get_video_info,
+    resolve_vcodec,
+)
 from lerobot.utils.constants import (
     HF_LEROBOT_HOME,
     OBS_IMAGE,
@@ -929,7 +934,7 @@ def _keep_episodes_from_video_with_av(
     output_path: Path,
     episodes_to_keep: list[tuple[int, int]],
     fps: float,
-    vcodec: str = "libsvtav1",
+    vcodec: str = "auto",
     pix_fmt: str = "yuv420p",
 ) -> None:
     """Keep only specified episodes from a video file using PyAV.
@@ -944,7 +949,8 @@ def _keep_episodes_from_video_with_av(
             Ranges are half-open intervals: [start_frame, end_frame), where start_frame
             is inclusive and end_frame is exclusive.
         fps: Frame rate of the video.
-        vcodec: Video codec to use for encoding.
+        vcodec: Video codec to use for encoding. ``"auto"`` resolves to the best
+            available hardware encoder, exactly as recording does.
         pix_fmt: Pixel format for output video.
     """
     from fractions import Fraction
@@ -953,6 +959,22 @@ def _keep_episodes_from_video_with_av(
 
     if not episodes_to_keep:
         raise ValueError("No episodes to keep")
+
+    # Match recording. `lerobot_record.py` defaults to `vcodec="auto"`, which
+    # `resolve_vcodec` turns into the first working hardware encoder — h264_nvenc
+    # on an NVIDIA host. Hardcoding "libsvtav1" here meant that editing a dataset
+    # rewrote part of it as AV1 while every untouched file stayed H.264: one
+    # stream, two codecs. That combination breaks the packet-level remux in
+    # `aggregate_datasets`, so such a dataset can no longer be merged.
+    #
+    # The options matter as much as the codec. This function used to set none at
+    # all, so the encoder picked its own default quality and the output did not
+    # match what recording produces even when the codec happened to agree.
+    # `_get_codec_options` is the same call `encode_video_frames` makes: for
+    # nvenc it yields rc=constqp + qp=30, and it deliberately omits `g` for
+    # hardware encoders.
+    vcodec = resolve_vcodec(vcodec)
+    video_options = _get_codec_options(vcodec)
 
     in_container = av.open(str(input_path))
 
@@ -970,7 +992,7 @@ def _keep_episodes_from_video_with_av(
 
     # Convert fps to Fraction for PyAV compatibility.
     fps_fraction = Fraction(fps).limit_denominator(1000)
-    v_out = out.add_stream(vcodec, rate=fps_fraction)
+    v_out = out.add_stream(vcodec, rate=fps_fraction, options=video_options)
 
     # PyAV type stubs don't distinguish video streams from audio/subtitle streams.
     v_out.width = v_in.codec_context.width
@@ -1038,7 +1060,7 @@ def _copy_and_reindex_videos(
     src_dataset: LeRobotDataset,
     dst_meta: LeRobotDatasetMetadata,
     episode_mapping: dict[int, int],
-    vcodec: str = "libsvtav1",
+    vcodec: str = "auto",
     pix_fmt: str = "yuv420p",
 ) -> dict[int, dict]:
     """Copy and filter video files, only re-encoding files with deleted episodes.
