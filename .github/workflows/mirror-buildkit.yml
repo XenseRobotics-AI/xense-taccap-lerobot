@@ -1,0 +1,109 @@
+# Copyright 2026 The XenseRobotics Inc. team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Mirrors the BuildKit daemon image into this repository's GHCR namespace.
+#
+# Why this exists: docker/setup-buildx-action's container driver starts a
+# BuildKit daemon from an image, and the only publication of that image is
+# `moby/buildkit` on Docker Hub — there is no ghcr.io/moby/buildkit. Docker Hub
+# is a Docker, Inc. service under its own terms, and this repository is keeping
+# the build path free of it (see the header of docker/Dockerfile.user). Mirroring
+# once, deliberately, leaves docker-publish.yml pulling only from GHCR.
+#
+# The software itself is not the issue: BuildKit is Apache-2.0 Moby code, the
+# same licence as the Engine. What is being removed is the recurring dependency
+# on Docker Hub as a *service*, on every CI run.
+#
+# Run this manually when BuildKit needs refreshing. It is not on a schedule on
+# purpose: a mirror that updates itself is a moving dependency wearing a pinned
+# tag, which is the thing the mirror was supposed to fix.
+name: Mirror BuildKit
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Upstream image to mirror (pin by digest when you can)'
+        required: false
+        default: 'moby/buildkit:buildx-stable-1@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8'
+        type: string
+      tag:
+        description: 'Tag to publish under ghcr.io/<owner>/buildkit'
+        required: false
+        default: 'buildx-stable-1'
+        type: string
+
+jobs:
+  mirror:
+    name: Copy BuildKit to GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copy the image
+        id: copy
+        env:
+          # Through env, not interpolated into the script: a `${{ inputs.* }}`
+          # inside `run:` is a shell injection site. Same rule as the tag
+          # resolution step in docker-publish.yml.
+          SOURCE: ${{ inputs.source }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          # `imagetools create` is a registry-to-registry copy: it reads and
+          # writes manifests directly and never starts a builder. That matters
+          # here beyond speed — needing a BuildKit daemon to mirror the BuildKit
+          # daemon image would be circular. buildx ships on the runner already,
+          # so no setup-buildx-action step (which is what pulls from Hub).
+          dest="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/buildkit:${TAG}"
+          echo "Mirroring ${SOURCE}"
+          echo "       -> ${dest}"
+          docker buildx imagetools create --tag "${dest}" "${SOURCE}"
+          # The digest of our copy, which is what docker-publish.yml could pin
+          # to if a tag is ever judged too loose. It is not guaranteed to equal
+          # the upstream index digest: the copy is re-serialised on write, so
+          # read it back rather than assuming.
+          digest="$(docker buildx imagetools inspect "${dest}" --format '{{.Manifest.Digest}}')"
+          {
+              echo "dest=${dest}"
+              echo "digest=${digest}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Summarize
+        env:
+          SOURCE: ${{ inputs.source }}
+          DEST: ${{ steps.copy.outputs.dest }}
+          DIGEST: ${{ steps.copy.outputs.digest }}
+        run: |
+          set -euo pipefail
+          {
+              echo "### BuildKit mirrored"
+              echo
+              echo "| | |"
+              echo "|---|---|"
+              echo "| source | \`${SOURCE}\` |"
+              echo "| destination | \`${DEST}\` |"
+              echo "| digest | \`${DIGEST}\` |"
+              echo
+              echo "The package is created **private**. Either make it public in"
+              echo "the repository's Packages settings, or leave it private —"
+              echo "docker-publish.yml logs in to GHCR before it sets up Buildx,"
+              echo "so \`GITHUB_TOKEN\` can pull it either way."
+          } >> "${GITHUB_STEP_SUMMARY}"

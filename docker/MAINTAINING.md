@@ -60,6 +60,26 @@ tag 名去掉前导 `v` 就是镜像 tag。workflow 同时推 `latest` 和 `sha-
 也可以在仓库 Actions 页面手动触发 **Docker Publish**（`workflow_dispatch`），
 tag 留空则取 `pyproject.toml` 里 `+xtac.` 之后的版本号，`push_latest` 可关掉。
 
+### 一次性前置：BuildKit 镜像源
+
+**换了 owner 或新建仓库后，第一次跑 Docker Publish 之前必须先手动触发一次
+`Mirror BuildKit`**，否则 `Set up Buildx` 会因为拉不到镜像直接失败。
+
+原因：`docker/setup-buildx-action` 的 container driver 要从镜像启动一个 BuildKit
+守护进程，而该镜像上游只发布在 Docker Hub（`moby/buildkit`，没有
+`ghcr.io/moby/buildkit`）。为了让构建链路不再依赖 Docker Hub 这个服务，
+`Docker Publish` 改成从 `ghcr.io/<owner>/buildkit:buildx-stable-1` 拉——那是我们
+自己的镜像副本，由 `Mirror BuildKit` workflow 填充。同样理由，
+`docker/Dockerfile.user` 的基础镜像也从 Docker Hub 换到了 ECR Public，细节见该
+文件头部注释。
+
+BuildKit 本身是 Apache-2.0 的 Moby 代码，去掉的是对 Docker Hub **服务**的
+周期性依赖，不是换掉软件。
+
+`Mirror BuildKit` 故意不设定时任务：会自动更新的镜像副本，等于挂着固定 tag 的
+浮动依赖，正是做副本要避免的事。需要升级 BuildKit 时手动跑一次，`source` 默认
+已按 digest 固定。
+
 发布后确认三件事：
 
 ```bash
