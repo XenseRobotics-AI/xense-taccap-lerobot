@@ -1,11 +1,33 @@
-# syntax=docker/dockerfile:1.7
-
 # LeRobot-Xense runtime/development image.
 #
 # The project relies on conda C++/CUDA libraries and several native hardware
 # SDKs, so the regular python:slim LeRobot image is not sufficient here.
+#
+# Nothing here pulls from Docker Hub, deliberately. Two things used to:
+#
+#   - `FROM ubuntu:...`, which resolves to `docker.io/library/ubuntu`. Canonical
+#     publishes the same image to ECR Public, and it is the *same image*: the
+#     linux/amd64 manifest digest of `public.ecr.aws/ubuntu/ubuntu:22.04` is
+#     sha256:281c5745f657873d78e5531fc5ba8575f46ab7769b94550ac99543f122679986,
+#     byte-identical to the Docker Hub tag it replaced. Override UBUNTU_IMAGE to
+#     point at an internal mirror; the tag grammar is the same either way.
+#   - `# syntax=docker/dockerfile:1.7`, which pulls the frontend image
+#     `docker.io/docker/dockerfile`. The only BuildKit feature this file uses is
+#     `RUN --mount=type=bind` below, which the *builtin* frontend has supported
+#     since well before the Engine version any of this runs on, so the directive
+#     bought a pinned frontend and nothing else. Verified by building this file
+#     without it. Re-add it only alongside a feature that actually needs a newer
+#     frontend than the builder ships.
+#
+# The motive is a Docker Hub compliance review, not a technical one: Docker Hub
+# is a Docker, Inc. service with its own terms, while the Engine/BuildKit
+# software this builds with is Apache-2.0 Moby. Keeping the build free of Hub
+# pulls keeps the two from having to be argued about together. CI still pulls
+# `moby/buildkit` from Hub via docker/setup-buildx-action's container driver —
+# there is no non-Hub publication of it — so that one is unfinished business.
 ARG UBUNTU_VERSION=22.04
-FROM ubuntu:${UBUNTU_VERSION}
+ARG UBUNTU_IMAGE=public.ecr.aws/ubuntu/ubuntu
+FROM ${UBUNTU_IMAGE}:${UBUNTU_VERSION}
 
 ARG TARGETARCH
 ARG MINIFORGE_VERSION=25.3.1-0
