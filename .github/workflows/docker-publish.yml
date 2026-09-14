@@ -101,9 +101,15 @@ jobs:
           # `XenseRobotics-AI`. metadata-action lowercases its own `images` input, but
           # the buildcache refs below are passed to buildx verbatim.
           image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/xense-taccap-lerobot"
+          # The BuildKit mirror, resolved here for the same reason: a registry
+          # reference has to be lowercase, `${{ github.repository_owner }}` is
+          # not, and a `with:` block has no shell to lowercase it in. Kept in
+          # step with mirror-buildkit.yml's default tag — change both together.
+          buildkit="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/buildkit:buildx-stable-1"
           {
               echo "tag=${tag}"
               echo "image=${image}"
+              echo "buildkit=${buildkit}"
           } >> "${GITHUB_OUTPUT}"
           echo "Publishing ${image}:${tag}"
 
@@ -117,15 +123,32 @@ jobs:
             type=raw,value=latest,enable=${{ github.event_name != 'workflow_dispatch' || inputs.push_latest }}
             type=sha,format=long
 
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
       - name: Log in to GHCR
+        # Ahead of Set up Buildx, not after it, and the order is load-bearing
+        # now. The container driver's BuildKit image comes from our GHCR mirror
+        # below, and setup-buildx-action pulls it through the runner's Docker
+        # daemon — which has a GHCR credential only once login-action has
+        # written one. Reversed, a private mirror package fails to pull before
+        # anything has logged in, and the failure names the image rather than
+        # the ordering.
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          # Without this the container driver starts BuildKit from
+          # `moby/buildkit` on Docker Hub, which is the last Docker Hub pull in
+          # the build path (docker/Dockerfile.user's header covers the other
+          # two). BuildKit is Apache-2.0 Moby code — what is being dropped is
+          # the dependency on Docker Hub as a service, not the software.
+          #
+          # Populate the mirror with the Mirror BuildKit workflow; this step
+          # fails with a pull error until that has been run once.
+          driver-opts: image=${{ steps.resolve.outputs.buildkit }}
 
       - name: Build and push
         id: build
