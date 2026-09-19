@@ -125,7 +125,7 @@ class BiTaccapGripperConfig(RobotConfig):
     left_tracker_to_ee_pos: tuple[float, float, float] | None = None
     left_tracker_to_ee_quat: tuple[float, float, float, float] | None = None
     """Tracker → EE rigid mount transform for this side. ``None`` (default) =
-    the built-in value from ``ee_transform.tracker_to_tcp("left")``, measured off
+    the built-in value from ``ee_transform.tracker_to_ee("left")``, measured off
     the CAD assembly (both sides are measured; neither is mirrored from the
     other). Set to override."""
 
@@ -148,7 +148,7 @@ class BiTaccapGripperConfig(RobotConfig):
     right_tracker_to_ee_pos: tuple[float, float, float] | None = None
     right_tracker_to_ee_quat: tuple[float, float, float, float] | None = None
     """Tracker → EE rigid mount transform for this side. ``None`` (default) =
-    the built-in value from ``ee_transform.tracker_to_tcp("right")``, measured
+    the built-in value from ``ee_transform.tracker_to_ee("right")``, measured
     off the CAD assembly. Set to override."""
 
     right_enable_wrist_camera: bool = True

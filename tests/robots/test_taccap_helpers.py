@@ -56,7 +56,7 @@ from lerobot.robots.taccap_gripper.common import (
     write_hardware_manifest,
 )
 from lerobot.robots.taccap_gripper.config_taccap_gripper import TaccapGripperConfig
-from lerobot.robots.taccap_gripper.ee_transform import resolve_tracker_to_ee, tracker_to_tcp
+from lerobot.robots.taccap_gripper.ee_transform import resolve_tracker_to_ee, tracker_to_ee
 
 
 class TestTactileOutputTypes:
@@ -1165,7 +1165,7 @@ class TestSwapTactileDisplayFeatures:
 class TestTrackerToTcp:
     @pytest.mark.parametrize("side", ["left", "right"])
     def test_returns_a_position_and_a_unit_quaternion(self, side):
-        pos, quat = tracker_to_tcp(side)
+        pos, quat = tracker_to_ee(side)
         assert pos.shape == (3,)
         assert quat.shape == (4,)
         assert np.linalg.norm(quat) == pytest.approx(1.0)
@@ -1173,35 +1173,35 @@ class TestTrackerToTcp:
     def test_sides_are_measured_separately_not_mirrored(self):
         """Both sides carry their own measured values; a change that starts
         deriving one from the other would make these identical up to a sign."""
-        left_pos, _ = tracker_to_tcp("left")
-        right_pos, _ = tracker_to_tcp("right")
+        left_pos, _ = tracker_to_ee("left")
+        right_pos, _ = tracker_to_ee("right")
         assert not np.allclose(left_pos, right_pos)
         assert not np.allclose(left_pos, right_pos * np.array([1.0, -1.0, 1.0]))
 
     def test_unknown_side_raises(self):
         with pytest.raises(ValueError, match="side must be one of"):
-            tracker_to_tcp("middle")
+            tracker_to_ee("middle")
 
     def test_side_is_case_and_space_insensitive(self):
-        assert np.allclose(tracker_to_tcp("  LEFT ")[0], tracker_to_tcp("left")[0])
+        assert np.allclose(tracker_to_ee("  LEFT ")[0], tracker_to_ee("left")[0])
 
 
 class TestResolveTrackerToEe:
     def test_none_means_use_the_built_in_transform(self):
-        built_in = tracker_to_tcp("left")
+        built_in = tracker_to_ee("left")
         pos, quat = resolve_tracker_to_ee("left", None, None)
         assert np.allclose(pos, built_in[0])
         assert np.allclose(quat, built_in[1])
 
     def test_position_can_be_overridden_alone(self):
         """A rig with a re-machined mount pins just the translation."""
-        built_in_quat = tracker_to_tcp("left")[1]
+        built_in_quat = tracker_to_ee("left")[1]
         pos, quat = resolve_tracker_to_ee("left", (0.1, 0.2, 0.3), None)
         assert np.allclose(pos, [0.1, 0.2, 0.3])
         assert np.allclose(quat, built_in_quat)
 
     def test_rotation_can_be_overridden_alone(self):
-        built_in_pos = tracker_to_tcp("left")[0]
+        built_in_pos = tracker_to_ee("left")[0]
         pos, quat = resolve_tracker_to_ee("left", None, (1.0, 0.0, 0.0, 0.0))
         assert np.allclose(pos, built_in_pos)
         assert np.allclose(quat, [1.0, 0.0, 0.0, 0.0])

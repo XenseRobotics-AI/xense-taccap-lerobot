@@ -9,10 +9,10 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 
 """
-Tracker → EEF TCP rigid transform for the TacCap-Gripper.
+Tracker → EE rigid transform for the TacCap-Gripper.
 
 The Pico4 tracker is bolted to the gripper, so what the tracker reports is the
-*tracker's* pose, not the TCP we actually want to record. This module owns the
+*tracker's* pose, not the end effector we actually want to record. This module owns the
 constant rigid offset between the two, for both sides, and is the single place
 the numbers live.
 
@@ -21,7 +21,7 @@ Frames
 ``Pico4TrackerReader`` already emits **world-frame** poses (X forward, Y left,
 Z up, gravity-aligned) and then right-multiplies the offset::
 
-    T_world_tcp = T_world_tracker @ X  # tracker.py
+    T_world_ee = T_world_tracker @ X  # tracker.py
 
 so ``X`` is body-fixed: it rides along with the gripper and is valid at any
 runtime orientation. That is why the operator may start a UMI session with the
@@ -94,7 +94,7 @@ MIRROR_XZ = np.diag([1.0, -1.0, 1.0])
 #
 # These are LEADER (patch `m`) grippers. The follower body is a different
 # design — different joint origins, flipped jaw axis, fingertips 21 mm further
-# out — so these values do not carry over; see `tracker_to_tcp`.
+# out — so these values do not carry over; see `tracker_to_ee`.
 TRACKER_TO_EE_POS_M: dict[str, tuple[float, float, float]] = {
     "left": (-0.160768654, -0.105859381, 0.024897320),
     "right": (-0.161933698, 0.106110099, 0.025322636),
@@ -154,15 +154,15 @@ def mirror_xz(pos: np.ndarray, quat: np.ndarray) -> tuple[np.ndarray, np.ndarray
     return pose[:3].copy(), pose[3:7].copy()
 
 
-def tracker_to_tcp(side: str, role: str = "leader") -> tuple[np.ndarray, np.ndarray]:
-    """``(pos, quat_wxyz)`` from the tracker frame to the TCP, for ``side``.
+def tracker_to_ee(side: str, role: str = "leader") -> tuple[np.ndarray, np.ndarray]:
+    """``(pos, quat_wxyz)`` from the tracker frame to the EE, for ``side``.
 
     Both sides carry their own measured values; nothing is derived by mirroring
     (the two differ by 1.27 mm, see the module docstring).
 
     Only **leader** bodies are measured. The follower gripper is a different
     design — its URDF has different joint origins, a flipped jaw axis and
-    fingertips 21 mm further out — so the leader numbers would put its TCP about
+    fingertips 21 mm further out — so the leader numbers would put its EE about
     2 cm off. Asking for a follower warns once and returns the leader value
     rather than failing a run mid-session.
     """
@@ -175,9 +175,9 @@ def tracker_to_tcp(side: str, role: str = "leader") -> tuple[np.ndarray, np.ndar
     if str(role).strip().lower() not in ("leader", "master", "m") and not _warned_follower:
         _warned_follower = True
         logger.warn(
-            f"tracker→TCP is only measured for leader grippers; using the leader value for "
+            f"tracker→EE is only measured for leader grippers; using the leader value for "
             f"role={role!r}. The follower body differs (fingertips ~21 mm further out), so "
-            "its TCP will be off by roughly that much until the follower is measured too."
+            "its EE will be off by roughly that much until the follower is measured too."
         )
 
     pos = np.array(TRACKER_TO_EE_POS_M[side], dtype=np.float64)
@@ -198,7 +198,7 @@ def resolve_tracker_to_ee(
     ``None`` means "use the built-in value"; either component can be overridden
     on its own, so a rig with a re-machined mount can pin just the translation.
     """
-    built_in_pos, built_in_quat = tracker_to_tcp(side, role)
+    built_in_pos, built_in_quat = tracker_to_ee(side, role)
     out_pos = built_in_pos if pos is None else np.asarray(pos, dtype=np.float64).reshape(3)
     out_quat = built_in_quat if quat is None else np.asarray(quat, dtype=np.float64).reshape(4)
     return out_pos, out_quat

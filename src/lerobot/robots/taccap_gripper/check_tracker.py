@@ -12,7 +12,7 @@
 Sanity-check helper for the Pico4 motion tracker.
 
 Read-only, despite what this file used to be called: the tracker needs no
-calibration. Its mount transform is built in (``ee_transform.tracker_to_tcp``)
+calibration. Its mount transform is built in (``ee_transform.tracker_to_ee``)
 and its side comes from the serial, so there is nothing here to solve for and
 nothing to write out.
 
@@ -43,7 +43,7 @@ import time
 
 import numpy as np
 
-from lerobot.robots.taccap_gripper.ee_transform import tracker_to_tcp
+from lerobot.robots.taccap_gripper.ee_transform import tracker_to_ee
 from lerobot.teleoperators.pico4.tracker import Pico4TrackerReader
 from lerobot.utils.robot_utils import get_logger
 
@@ -66,7 +66,7 @@ def main() -> None:
         ee_pos, ee_quat = np.zeros(3), np.array([1.0, 0.0, 0.0, 0.0])
         logger.info("no --side: transform is identity, 'ee' will track 'raw'.")
     else:
-        ee_pos, ee_quat = tracker_to_tcp(args.side)
+        ee_pos, ee_quat = tracker_to_ee(args.side)
         offset_mm = float(np.linalg.norm(ee_pos)) * 1e3
         logger.info(f"side={args.side} tracker→TCP pos={ee_pos.tolist()} quat={ee_quat.tolist()}")
         logger.info(f"TCP sits {offset_mm:.2f} mm from the tracker origin.")
