@@ -140,7 +140,7 @@ class TaccapGripperConfig(RobotConfig):
     tracker_to_ee_pos: tuple[float, float, float] | None = None
     """Translation from the tracker frame to the gripper end-effector frame
     (meters). ``None`` (default) = this side's built-in value from
-    ``ee_transform.tracker_to_tcp``, derived from the CAD mount geometry. Set it
+    ``ee_transform.tracker_to_ee``, derived from the CAD mount geometry. Set it
     to override — e.g. a re-machined mount. The two components are independent,
     so the translation can be pinned while the rotation stays built-in."""
 
