@@ -122,10 +122,13 @@ LEROBOT_IMAGE_TAG=0.0.5 docker compose build
 LEROBOT_IMAGE_TAG=0.0.5 ./docker/package_customer_delivery.sh
 ```
 
-两条命令的 `LEROBOT_IMAGE_TAG` 必须一致，原因见第 2 节末尾。
+两条命令的 `LEROBOT_IMAGE_TAG` 必须一致，原因见第 2 节末尾。自定义镜像仓库时，
+两步也应设置相同的 `LEROBOT_IMAGE`；打包脚本兼容旧变量 `XENSE_IMAGE_REPOSITORY`。
 
 脚本会在 `dist/customer/` 下生成一个交付目录，包含 tar、`SHA256SUMS`、
-`compose.yaml`、`.env` 和 `install_customer.sh`。把整个目录复制到客户机后：
+`compose.yaml`、`compose.override.yaml`、`.env`、`delivery.env`、`README.md`、
+`install_customer.sh` 和国内安装入口 `install_cn.sh`。
+覆盖文件禁止启动时自动拉镜像，`.env` 保存镜像仓库和 tag。把整个目录复制到客户机后：
 
 ```bash
 cd xense-taccap-lerobot-0.0.5-linux-amd64
@@ -135,6 +138,34 @@ cd xense-taccap-lerobot-0.0.5-linux-amd64
 `install_customer.sh` 看到同目录下有 tar 就自动走离线装载（校验 SHA256 后
 `docker load`），宿主机准备步骤与在线路径完全相同。目录里有多个 tar 时它会拒绝猜测，
 要求把目标 tar 作为参数传入。
+
+客户机可访问国内网络、无法访问国外地址时，使用：
+
+```bash
+bash ./install_cn.sh
+```
+
+这会为本次 APT 操作单独生成国内源列表，跳过宿主机原有的软件源；Docker CE
+走中科大，NVIDIA Toolkit 走中科大，系统依赖走中科大 Ubuntu/Debian 源。NVIDIA 源列表
+中的上游 URL 也会替换，不能只替换列表文件的下载地址。仍检查签名，并要求本地 tar，
+不允许回退到 GHCR。客户机需预装 NVIDIA 驱动，完全断网的机器不适用。
+
+入口等价于 `XENSE_MIRROR=cn ./install_customer.sh`。它只改变客户机安装时的软件源，
+不修改 Dockerfile、镜像构建参数或发布工作流；默认在线安装仍使用原有软件源并拉取镜像。
+
+打包前在构建机完成短录制、退出和语音检查。容器内临时安装的软件不会被 `docker save`
+导出，所需依赖必须写入镜像。本地构建可使用独立 tag（例如 `local-20260918`），
+构建、测试、打包必须使用同一 tag：
+
+```bash
+LEROBOT_IMAGE_TAG=local-20260918 docker compose build
+LEROBOT_IMAGE_TAG=local-20260918 docker compose run --rm --pull never xense-taccap
+# 在上面的容器中完成短录制、退出和语音检查，退出后再打包。
+./docker/package_customer_delivery.sh local-20260918
+```
+
+国内源依据：[中科大 Docker CE](https://mirrors.ustc.edu.cn/help/docker-ce.html)、
+[中科大 NVIDIA Container Toolkit](https://mirrors.ustc.edu.cn/help/libnvidia-container.html)。
 
 ## 5. 维护者侧常见问题
 
