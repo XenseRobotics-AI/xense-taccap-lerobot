@@ -809,6 +809,18 @@ def combine_feature_dicts(*dicts: dict) -> dict:
     return out
 
 
+#: 这份数据出自哪套采集栈,无条件写进 `info.json` 顶层。
+#:
+#: 下游(TacFlow 的合并闸)必须知道一个数据集是本仓直录的、还是小背包
+#: `TacCap-Collector` 采集后转来的 —— 两者成像链路、编码器规格、元数据形态都不同,
+#: **不该合进同一个任务数据集**。在此之前它只能去反推「某个写盘工具碰巧多写了哪个键」
+#: (如 `video.video_backend`),那是副作用不是声明:一旦两边对齐了那个键,判据就静默失效。
+#:
+#: 所以这里**无条件**写,不给开关、不随 profile 变 —— 少写一次,那份数据就再也判不出出处,
+#: 而且不会有任何报错。
+COLLECTION_STACK = "xense-taccap-lerobot"
+
+
 def create_empty_dataset_info(
     codebase_version: str,
     fps: int,
@@ -828,12 +840,17 @@ def create_empty_dataset_info(
         use_videos (bool): Whether the dataset will store videos.
         robot_type (str | None): The type of robot used, if any.
 
+    The returned template always carries ``collection_stack`` so downstream
+    tooling can tell this recorder's output apart from datasets converted from
+    the ``TacCap-Collector`` backpack stack.  See :data:`COLLECTION_STACK`.
+
     Returns:
         dict: A dictionary with the initial dataset metadata.
     """
     return {
         "codebase_version": codebase_version,
         "robot_type": robot_type,
+        "collection_stack": COLLECTION_STACK,
         "total_episodes": 0,
         "total_frames": 0,
         "total_tasks": 0,
