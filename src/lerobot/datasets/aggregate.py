@@ -450,8 +450,20 @@ def aggregate_data(src_meta, dst_meta, data_idx, data_files_size_in_mb, chunk_si
     unique_chunk_file_ids = sorted(unique_chunk_file_ids)
     contains_images = len(dst_meta.image_keys) > 0
 
-    # retrieve features schema for proper image typing in parquet
-    hf_features = get_hf_features_from_features(dst_meta.features) if contains_images else None
+    # Always pass the declared schema, not only when images are present.
+    #
+    # `hf_features` is what makes `Dataset.from_dict` honour the declared shapes.
+    # Gating it on `contains_images` means that for video-only datasets (no inline
+    # `image` features) the writer falls back to inferring types from the pandas
+    # dict -- and inference cannot recover a length from a column of numpy arrays.
+    # The result: `fixed_size_list<float>[N]` silently degrades to `list<float>`
+    # and the schema metadata becomes `pandas` instead of `huggingface`, so the
+    # aggregated dataset no longer honours its own `info.json`. Nothing raises.
+    #
+    # Shapes are safe here: `LeRobotDatasetMetadata.features` normalises them to
+    # tuples, so `get_hf_features_from_features` maps `shape == (1,)` to a scalar
+    # `Value` rather than a length-1 `Sequence`.
+    hf_features = get_hf_features_from_features(dst_meta.features)
 
     # Track source to destination file mapping for metadata update
     # This is critical for handling datasets that are already results of a merge
@@ -545,6 +557,24 @@ def aggregate_metadata(src_meta, dst_meta, meta_idx, data_idx, videos_idx):
     return meta_idx
 
 
+def _write(df: pd.DataFrame, path: Path, hf_features: datasets.Features | None) -> None:
+    """Write `df`, honouring the declared schema when one was supplied.
+
+    `df.to_parquet()` infers types from the pandas dict, and inference cannot
+    recover a length from a column of numpy arrays: a declared
+    `fixed_size_list<float>[N]` comes back as `list<float>`, and the schema
+    metadata says `pandas` instead of `huggingface`. The aggregated dataset then
+    no longer honours its own `info.json`, and nothing raises.
+
+    Callers that have no declared schema (the `meta/episodes` path) pass `None`
+    and keep the previous behaviour.
+    """
+    if hf_features is None:
+        df.to_parquet(path)
+    else:
+        to_parquet_with_hf_images(df, path, features=hf_features)
+
+
 def append_or_create_parquet_file(
     df: pd.DataFrame,
     src_path: Path,
@@ -581,10 +611,7 @@ def append_or_create_parquet_file(
 
     if not dst_path.exists():
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        if contains_images:
-            to_parquet_with_hf_images(df, dst_path, features=hf_features)
-        else:
-            df.to_parquet(dst_path)
+        _write(df, dst_path, hf_features)
         return idx, (dst_chunk, dst_file)
 
     src_size = get_parquet_file_size_in_mb(src_path)
@@ -607,10 +634,7 @@ def append_or_create_parquet_file(
         final_df = pd.concat([existing_df, df], ignore_index=True)
         target_path = dst_path
 
-    if contains_images:
-        to_parquet_with_hf_images(final_df, target_path, features=hf_features)
-    else:
-        final_df.to_parquet(target_path)
+    _write(final_df, target_path, hf_features)
 
     return idx, (dst_chunk, dst_file)
 
