@@ -552,7 +552,16 @@ class TaccapGripper(Robot):
                     self._gripper.stop_streaming()
             except Exception as e:  # pragma: no cover
                 self.logger.warn(f"  stop_streaming raised: {e}")
-            # Gripper has no explicit close; transport is released on GC.
+            # Release the serial port now: the SDK opens it exclusively and
+            # otherwise frees it only on GC, so a lingering reference would make
+            # a reconnect in this process fail with EBUSY. close() arrived in
+            # SDK 0.3.6; older extensions still free on GC.
+            close = getattr(self._gripper, "close", None)
+            if close is not None:
+                try:
+                    close()
+                except Exception as e:  # pragma: no cover
+                    self.logger.warn(f"  gripper close raised: {e}")
             self._gripper = None
 
         self._endpoints = None
