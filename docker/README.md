@@ -5,6 +5,33 @@ TacCap-Gripper SDK 和 Pico4 绑定的镜像。**从 GHCR 拉取，不需要自�
 
 构建镜像、发布新版本、离线交付见 [`MAINTAINING.md`](MAINTAINING.md)。
 
+## 国外网络不可用：本地镜像 + 国内软件源
+
+向维护者索取完整交付目录（制作方法见 `MAINTAINING.md` 第 4.2 节），复制到目标机。
+目标机无需克隆 GitHub，也无需访问 GHCR。在交付目录执行：
+
+```bash
+XENSE_MIRROR=cn ./install_customer.sh
+```
+
+此模式必须有镜像 tar 和 `SHA256SUMS`，先校验再 `docker load`，缺失时直接停止，
+不会回退到在线拉镜像。Docker CE 使用中科大源，NVIDIA Container Toolkit 使用中科大源，
+Ubuntu/Debian 基础依赖使用中科大源；保留软件包签名校验。国内源不可达时安装失败，
+不会回退国外源。基础 APT 源只用于本次安装，不改写宿主机原有系统源；新安装的
+Docker/NVIDIA 仓库配置会保存为国内地址。
+
+这不是完全断网安装：目标机仍需访问国内镜像站，并预先安装兼容的 NVIDIA 驱动。
+安装会重启 Docker，请先结束已有容器任务。安装完注销并重新登录，再进入交付目录：
+
+```bash
+docker compose config --images
+docker compose run --rm --pull never xense-taccap
+```
+
+交付包的 `compose.override.yaml` 也设置了 `pull_policy: never`。升级时索取新交付包，
+不要运行在线安装脚本或 `docker compose pull`。语音、Python 和厂商 SDK 依赖应在
+打包镜像前装齐，客户机不需要在容器内安装它们。
+
 ## 快速开始
 
 **逐条敲,不要整块粘贴** —— `newgrp` 会开一个子 shell，整块粘贴时它后面的命令会被吃掉。
