@@ -6,9 +6,34 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-07
+
+与文档站 v0.1.0 配套的首个正式版。按 `v0.0.8..v0.1.0` 之间的提交整理。
+
+### Added
+
+- 带头显的双爪独立为机器类型 `xtac_umi_g1`,数据集的 `robot_type` 与录到的状态维度、相机路数一致(`df5d21eb`)。
+- `info.json` 写入 `collection_stack`,声明采集来源,下游不必反推(`8732ebf4`)。
+- 容器内语音播报:镜像装 eSpeak NG,Compose 映射宿主机 PipeWire/PulseAudio(`6719ba7c`)。
+- `CHANGELOG.md`,条目从文档站版本页迁入(`d8d17b79`)。
+
 ### Changed
 
-- 仓库、子模块与 GHCR 镜像路径改到 `XenseRobotics-AI` 组织(`573b820b`;取自 git log,版本页未记录)。
+- `taccap-gripper` 子模块从 `3d44440` 逐步升到 `v0.4.1`(附带固件 leader 1.2.6 / follower 1.2.14)(`c9d62a67`…`91c5d49a`)。
+- 仓库、子模块与 GHCR 镜像路径改到 `XenseRobotics-AI` 组织(`573b820b`)。
+- `check-dataset` 视频帧数改为严格相等,并按方向分级(`369c5097`)。
+- tracker→EE 变换统一为一个名字(`62d91b32`)。
+- 基础镜像、frontend 与 BuildKit 改用非 Docker Hub 源(`54ccb6e4`、`7cf50357`)。
+
+### Removed
+
+- 不再录制触觉运行时文件 `meta/runtimes/*.bin`(`36a530b4`)。
+
+### Fixed
+
+- 编辑数据集(`delete_episodes` / `split`)不再把重切的视频硬编码成 AV1,与采集同一套编码(`4adbdaa5`)。
+- 相机释放前先停读取线程,修复退出时偶发段错误;探测失败时仍会释放传感器(`20064359`、`4dad5f0f`)。
+- pico4 去掉没有目录支撑的 aarch64 include 分支(`c14e6d46`)。
 
 ## [0.0.8] - 2026-09-02
 
@@ -120,7 +145,8 @@
 
 版本页从这一版之后才开始按 commit 记录变更,此处无条目。
 
-[Unreleased]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.8...HEAD
+[Unreleased]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.8...v0.1.0
 [0.0.8]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.5...v0.0.6

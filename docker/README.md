@@ -72,7 +72,7 @@ xhost -si:localuser:root
 的 `.env` 里钉死（`.env` 不会被提交）：
 
 ```dotenv
-LEROBOT_IMAGE_TAG=0.0.8
+LEROBOT_IMAGE_TAG=0.1.0
 ```
 
 改完用 `docker compose config --images` 确认解析结果。
@@ -84,7 +84,7 @@ LEROBOT_IMAGE_TAG=0.0.8
 | 跑一次性命令             | `docker compose run --rm xense-taccap lerobot-info`                           |
 | 升级镜像                 | 改 `.env` 的 tag，再 `docker compose pull`                                    |
 | 确认解析到哪个镜像       | `docker compose config --images`                                              |
-| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.0.8` |
+| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.0` |
 | 确认本地跑的是哪个       | `docker image inspect --format '{{index .RepoDigests 0}}' <镜像>:<tag>`       |
 | 不用 Pico4，关掉随启服务 | `START_XENSEVR_SERVICE=0 docker compose run --rm xense-taccap`                |
 | 查看数据                 | `docker compose run --rm xense-taccap bash -lc 'ls -la /data'`                |
@@ -187,7 +187,18 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 
 ## 版本
 
-当前 **0.0.8**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+当前 **0.1.0**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+
+- **0.1.0** — 与文档站 v0.1.0 配套的首个正式版，**建议所有机器升级**：
+  - **带头显的双爪改用独立的机器类型 `xtac_umi_g1`**，不再在 `bi_taccap_gripper` 上加开关。
+    数据集里的 `robot_type` 与实际录到的状态维度、相机路数从此一致。
+  - **夹爪 SDK 升到 v0.4.1**，附带固件 leader 1.2.6 / follower 1.2.14。**拉取后重跑
+    `./setup_env.sh --install`**；固件低于附带版本的夹爪按 SDK 的 `ota_update.py` 刷写，刷完断电重启。
+  - **容器内可以听到语音播报**：镜像装了 eSpeak NG，Compose 映射宿主机 PipeWire/PulseAudio。
+  - **编辑数据集（删 episode、拆分）不再把视频改成 AV1**，与采集时同一套编码，编辑后的数据集仍能合并。
+  - `check-dataset` 的视频帧数改为严格相等。
+  - `info.json` 写入 `collection_stack`，声明数据由本仓库直录。
+  - 不再录制触觉运行时文件（`meta/runtimes/`）。
 
 - **0.0.8** — **建议所有机器升级，没有 N 卡的机器必须升级**：
   - **软件编码（`libsvtav1`）的录制会话不再每条 episode 多占约 1.3 GB 内存。** 没有
