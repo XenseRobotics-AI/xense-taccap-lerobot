@@ -13,7 +13,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include "PXREARobotSDK.h"
-#include "motion_tracker_metadata.h"
+#include <optional>
 
 using json = nlohmann::json;
 namespace py = pybind11;
@@ -43,7 +43,8 @@ std::array<std::array<double, 6>, 3> MotionTrackerAcceleration;  // Acceleration
 std::array<std::string, 3> MotionTrackerSerialNumbers;  // Serial numbers of the motion trackers
 int64_t MotionTimeStampNs = 0;  // Motion data timestamp
 int NumMotionDataAvailable = 0;  // number of motion trackers
-std::vector<MotionTrackerMetadata> MotionTrackerMetadataCache;
+std::array<std::optional<int>, 3> MotionTrackerConfidence;
+std::array<int64_t, 3> MotionTrackerTimestampNs{};
 
 
 bool LeftMenuButton;
@@ -303,14 +304,10 @@ void OnPXREAClientCallback(void* context, PXREAClientCallbackType type, int stat
                     auto& motion = value["Motion"];
                     {
                         std::lock_guard<std::mutex> lock(motionMutex);
-                        auto metadata = parseMotionTrackerMetadata(motion);
-                        // Clear slots each packet, including when the tracker list is empty.
-                        MotionTrackerMetadataCache = std::move(metadata);
                         MotionTrackerSerialNumbers = {};
-                        MotionTrackerPose = {};
-                        MotionTrackerVelocity = {};
-                        MotionTrackerAcceleration = {};
-                        NumMotionDataAvailable = static_cast<int>(MotionTrackerMetadataCache.size());
+                        MotionTrackerConfidence = {};
+                        MotionTrackerTimestampNs = {};
+                        NumMotionDataAvailable = 0;
                         MotionTimeStampNs = 0;
                         if (motion.contains("timeStampNs")) {
                             MotionTimeStampNs = motion["timeStampNs"].get<int64_t>();
@@ -321,6 +318,13 @@ void OnPXREAClientCallback(void* context, PXREAClientCallbackType type, int stat
 
                             for (int i = 0; i < NumMotionDataAvailable; i++) {
                                 auto& joint = joints[i];
+
+                                // Missing confidence is unknown, never inherited from an older slot.
+                                if (joint.contains("confidence") && joint["confidence"].is_number_integer()
+                                    && joint["confidence"] >= 0 && joint["confidence"] <= INT32_MAX) {
+                                    MotionTrackerConfidence[i] = joint["confidence"].get<int>();
+                                }
+                                MotionTrackerTimestampNs[i] = joint.value("timeStampNs", MotionTimeStampNs);
 
                                 // Parse pose (position and rotation)
                                 if (joint.contains("p")) {
@@ -369,7 +373,7 @@ void init() {
 void deinit() {
     PXREADeinit();
     std::lock_guard<std::mutex> lock(motionMutex);
-    MotionTrackerMetadataCache.clear();
+    MotionTrackerConfidence = {};
     NumMotionDataAvailable = 0;
     MotionTimeStampNs = 0;
 }
@@ -572,42 +576,26 @@ int64_t getMotionTimeStampNs() {
     return MotionTimeStampNs;
 }
 
-py::dict motionTrackerMetadataToDict(const MotionTrackerMetadata& item) {
-    py::dict result;
-    result["device_id"] = item.deviceId;
-    result["confidence"] = item.confidence ? py::cast(*item.confidence) : py::none();
-    result["timestamp_ns"] = item.timestampNs;
-    return result;
-}
-
 py::list getMotionTrackerStatus() {
-    std::vector<MotionTrackerMetadata> snapshot;
-    {
-        std::lock_guard<std::mutex> lock(motionMutex);
-        snapshot = MotionTrackerMetadataCache;
-    }
+    std::lock_guard<std::mutex> lock(motionMutex);
     py::list result;
-    for (const auto& item : snapshot) {
-        result.append(motionTrackerMetadataToDict(item));
+    for (int i = 0; i < NumMotionDataAvailable; ++i) {
+        py::dict item;
+        item["device_id"] = MotionTrackerSerialNumbers[i];
+        item["confidence"] = MotionTrackerConfidence[i] ? py::cast(*MotionTrackerConfidence[i]) : py::none();
+        item["timestamp_ns"] = MotionTrackerTimestampNs[i];
+        result.append(item);
     }
     return result;
 }
 
 py::object getMotionTrackerStatusById(const std::string& deviceId) {
-    std::optional<MotionTrackerMetadata> snapshot;
-    {
-        std::lock_guard<std::mutex> lock(motionMutex);
-        for (const auto& item : MotionTrackerMetadataCache) {
-            if (!deviceId.empty() && item.deviceId == deviceId) {
-                snapshot = item;
-                break;
-            }
+    for (const auto& item : getMotionTrackerStatus()) {
+        if (!deviceId.empty() && item["device_id"].cast<std::string>() == deviceId) {
+            return py::reinterpret_borrow<py::object>(item);
         }
     }
-    if (!snapshot) {
-        return py::none();
-    }
-    return motionTrackerMetadataToDict(*snapshot);
+    return py::none();
 }
 
 bool hasPicoCameraFrame(int eyeIndex) {
