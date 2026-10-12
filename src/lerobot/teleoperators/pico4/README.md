@@ -230,6 +230,11 @@ JSON data description
 
 ## Using the Python Bindings
 
+Tracker confidence and device-ID queries are documented in
+[Pico tracker confidence SDK](../../../../doc/pico_tracker_confidence.md).
+Rebuild the bundled pybind extension to use `get_motion_tracker_status()` and
+`get_motion_tracker_status_by_id(device_id)`.
+
 **1. Get Controller and Headset Poses**
 
 ```python

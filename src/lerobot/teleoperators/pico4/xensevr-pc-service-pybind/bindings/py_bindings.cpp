@@ -13,6 +13,7 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 #include "PXREARobotSDK.h"
+#include "motion_tracker_metadata.h"
 
 using json = nlohmann::json;
 namespace py = pybind11;
@@ -42,6 +43,7 @@ std::array<std::array<double, 6>, 3> MotionTrackerAcceleration;  // Acceleration
 std::array<std::string, 3> MotionTrackerSerialNumbers;  // Serial numbers of the motion trackers
 int64_t MotionTimeStampNs = 0;  // Motion data timestamp
 int NumMotionDataAvailable = 0;  // number of motion trackers
+std::vector<MotionTrackerMetadata> MotionTrackerMetadataCache;
 
 
 bool LeftMenuButton;
@@ -301,6 +303,15 @@ void OnPXREAClientCallback(void* context, PXREAClientCallbackType type, int stat
                     auto& motion = value["Motion"];
                     {
                         std::lock_guard<std::mutex> lock(motionMutex);
+                        auto metadata = parseMotionTrackerMetadata(motion);
+                        // Clear slots each packet, including when the tracker list is empty.
+                        MotionTrackerMetadataCache = std::move(metadata);
+                        MotionTrackerSerialNumbers = {};
+                        MotionTrackerPose = {};
+                        MotionTrackerVelocity = {};
+                        MotionTrackerAcceleration = {};
+                        NumMotionDataAvailable = static_cast<int>(MotionTrackerMetadataCache.size());
+                        MotionTimeStampNs = 0;
                         if (motion.contains("timeStampNs")) {
                             MotionTimeStampNs = motion["timeStampNs"].get<int64_t>();
                         }
@@ -357,6 +368,10 @@ void init() {
 
 void deinit() {
     PXREADeinit();
+    std::lock_guard<std::mutex> lock(motionMutex);
+    MotionTrackerMetadataCache.clear();
+    NumMotionDataAvailable = 0;
+    MotionTimeStampNs = 0;
 }
 
 std::array<double, 7> getLeftControllerPose() {
@@ -557,6 +572,44 @@ int64_t getMotionTimeStampNs() {
     return MotionTimeStampNs;
 }
 
+py::dict motionTrackerMetadataToDict(const MotionTrackerMetadata& item) {
+    py::dict result;
+    result["device_id"] = item.deviceId;
+    result["confidence"] = item.confidence ? py::cast(*item.confidence) : py::none();
+    result["timestamp_ns"] = item.timestampNs;
+    return result;
+}
+
+py::list getMotionTrackerStatus() {
+    std::vector<MotionTrackerMetadata> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(motionMutex);
+        snapshot = MotionTrackerMetadataCache;
+    }
+    py::list result;
+    for (const auto& item : snapshot) {
+        result.append(motionTrackerMetadataToDict(item));
+    }
+    return result;
+}
+
+py::object getMotionTrackerStatusById(const std::string& deviceId) {
+    std::optional<MotionTrackerMetadata> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(motionMutex);
+        for (const auto& item : MotionTrackerMetadataCache) {
+            if (!deviceId.empty() && item.deviceId == deviceId) {
+                snapshot = item;
+                break;
+            }
+        }
+    }
+    if (!snapshot) {
+        return py::none();
+    }
+    return motionTrackerMetadataToDict(*snapshot);
+}
+
 bool hasPicoCameraFrame(int eyeIndex) {
     if (eyeIndex < 0 || eyeIndex >= static_cast<int>(PicoCameraFrames.size())) {
         return false;
@@ -674,6 +727,10 @@ PYBIND11_MODULE(xensevr_pc_service_sdk, m) {
     m.def("get_motion_tracker_acceleration", &getMotionTrackerAcceleration, "Get the motion tracker acceleration data (3 trackers, 6 values each: ax,ay,az,wax,way,waz).");
     m.def("get_motion_tracker_serial_numbers", &getMotionTrackerSerialNumbers, "Get the serial numbers of the motion trackers.");
     m.def("get_motion_timestamp_ns", &getMotionTimeStampNs, "Get the motion data timestamp in nanoseconds.");
+    m.def("get_motion_tracker_status", &getMotionTrackerStatus,
+          "Get an atomic snapshot of tracker device_id (serial number), raw confidence (None if unknown), and timestamp_ns.");
+    m.def("get_motion_tracker_status_by_id", &getMotionTrackerStatusById, py::arg("device_id"),
+          "Get tracker status by serial number; returns None if not in the latest motion packet.");
 
     // Pico eye camera functions. eye_index: 0 = left, 1 = right.
     m.def("has_pico_camera_frame", &hasPicoCameraFrame, "Check whether a Pico camera frame has been received for an eye.");
