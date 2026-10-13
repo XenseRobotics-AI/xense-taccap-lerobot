@@ -72,7 +72,7 @@ xhost -si:localuser:root
 的 `.env` 里钉死（`.env` 不会被提交）：
 
 ```dotenv
-LEROBOT_IMAGE_TAG=0.1.0
+LEROBOT_IMAGE_TAG=0.1.1
 ```
 
 改完用 `docker compose config --images` 确认解析结果。
@@ -84,7 +84,7 @@ LEROBOT_IMAGE_TAG=0.1.0
 | 跑一次性命令             | `docker compose run --rm xense-taccap lerobot-info`                           |
 | 升级镜像                 | 改 `.env` 的 tag，再 `docker compose pull`                                    |
 | 确认解析到哪个镜像       | `docker compose config --images`                                              |
-| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.0` |
+| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.1` |
 | 确认本地跑的是哪个       | `docker image inspect --format '{{index .RepoDigests 0}}' <镜像>:<tag>`       |
 | 不用 Pico4，关掉随启服务 | `START_XENSEVR_SERVICE=0 docker compose run --rm xense-taccap`                |
 | 查看数据                 | `docker compose run --rm xense-taccap bash -lc 'ls -la /data'`                |
@@ -187,8 +187,12 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 
 ## 版本
 
-当前 **0.1.0**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+当前 **0.1.1**（`latest` 指向同一镜像）。只列影响使用方式的变化：
 
+- **0.1.1** — 与文档站 v0.1.1 配套：
+  - **夹爪 SDK 升到 v0.4.3**，附带固件 follower 1.2.16（leader 仍为 1.2.6）。**拉取后重跑
+    `./setup_env.sh --install`**；从夹爪固件低于 1.2.16 的按 SDK 的 `ota_update.py` 刷写，刷完断开 24V 电源约 2 秒再接上。
+  - 从夹爪力位控制跟随流式目标更平顺，跟踪延迟多约 10ms。
 - **0.1.0** — 与文档站 v0.1.0 配套的首个正式版，**建议所有机器升级**：
   - **带头显的双爪改用独立的机器类型 `xtac_umi_g1`**，不再在 `bi_taccap_gripper` 上加开关。
     数据集里的 `robot_type` 与实际录到的状态维度、相机路数从此一致。
