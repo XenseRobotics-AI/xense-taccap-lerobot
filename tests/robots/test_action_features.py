@@ -77,7 +77,7 @@ def build(cls, config, trackers):
 
 
 def head_keys(features):
-    return {k for k in features if k.startswith("head_camera.")}
+    return {k for k in features if k.startswith("head.")}
 
 
 class TestSingleArmActionFeatures:
@@ -89,7 +89,7 @@ class TestSingleArmActionFeatures:
 
     def test_head_pose_is_an_action_when_the_head_camera_is_on(self):
         keys = head_keys(self._robot(enable_head_camera=True).action_features)
-        assert keys == {f"head_camera.{s}" for s in POSE_SUFFIXES}
+        assert keys == {f"head.{s}" for s in POSE_SUFFIXES}
 
     def test_head_pose_is_in_both_observation_and_action(self):
         """Same as tcp.*: recorded as state, and available as a target."""
@@ -166,7 +166,7 @@ class TestBimanualActionFeatures:
 
     def test_head_pose_is_an_action_on_the_head_type(self):
         keys = head_keys(self._head_robot().action_features)
-        assert keys == {f"head_camera.{s}" for s in POSE_SUFFIXES}
+        assert keys == {f"head.{s}" for s in POSE_SUFFIXES}
 
     def test_head_pose_is_unprefixed_and_appears_once(self):
         """One headset serves both arms, so it is not per-side — unlike
@@ -207,7 +207,7 @@ class TestHeadIsPartOfTheRobotType:
         assert robot.name == "xtac_umi_g1"
         # lerobot_record passes robot.name straight to LeRobotDataset.create.
         assert robot.robot_type == "xtac_umi_g1"
-        assert head_keys(robot.observation_features) == {f"head_camera.{s}" for s in POSE_SUFFIXES}
+        assert head_keys(robot.observation_features) == {f"head.{s}" for s in POSE_SUFFIXES}
         # The configs the robot decided to open, not ``cameras`` — the camera
         # factory is stubbed out here, so only the decision is observable.
         assert {"head_left", "head_right"} <= set(robot._camera_configs)

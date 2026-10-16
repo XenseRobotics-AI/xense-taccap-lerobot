@@ -46,7 +46,7 @@ from lerobot.utils.constants import TACCAP_HARDWARE_MANIFEST_PATH
 
 # 6D rotation convention (matches ``vive_tracker``): r1..r3 is the first column
 # of the rotation matrix, r4..r6 the second. Position first, so the tuple is the
-# full 9-DoF pose layout used by ``tcp.*``, ``tracker.*`` and ``head_camera.*``
+# full 9-DoF pose layout used by ``tcp.*``, ``tracker.*`` and ``head.*``
 # alike — one definition instead of the six copies these robots used to carry.
 POSE_KEYS = ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6")
 
@@ -360,7 +360,7 @@ def head_camera_type_mismatch_message(robot_type: str, records_head: bool) -> st
     if records_head:
         return (
             f"{robot_type} always records the headset: its stereo cameras "
-            "(head_left / head_right) and the head_camera.* pose are part of the "
+            "(head_left / head_right) and the head.* pose are part of the "
             "robot type, not a flag, so --robot.enable_head_camera=false is not a "
             "valid combination. To record the same grippers without the headset, "
             "use --robot.type=bi_taccap_gripper."
@@ -369,7 +369,7 @@ def head_camera_type_mismatch_message(robot_type: str, records_head: bool) -> st
         f"{robot_type} does not record the headset, so "
         "--robot.enable_head_camera=true is not a valid combination. Use "
         "--robot.type=xtac_umi_g1, which records the headset's stereo cameras "
-        "(head_left / head_right) and the head_camera.* pose. Recording the head "
+        "(head_left / head_right) and the head.* pose. Recording the head "
         f"under {robot_type} is what wrote a robot_type into meta/info.json that "
         "disagreed with the shape actually recorded."
     )
@@ -471,7 +471,7 @@ class HeadSkewMonitor:
 
 
 def read_head_pose(logger: Any, warned: bool) -> tuple[dict[str, float], bool]:
-    """Headset pose as ``head_camera.{x,y,z,r1..r6}``, in the world frame.
+    """Headset pose as ``head.{x,y,z,r1..r6}``, in the world frame.
 
     Read from the Pico SDK rather than the camera, and remapped with the same
     Pico→world rotation the trackers use — so unlike the Insight VIO pose this
@@ -518,7 +518,7 @@ def read_head_pose(logger: Any, warned: bool) -> tuple[dict[str, float], bool]:
             logger.warn(f"Head pose unavailable, recording zeros: {e}")
         values = (0.0,) * 9
 
-    return {f"head_camera.{k}": float(v) for k, v in zip(HEAD_POSE_KEYS, values, strict=True)}, warned
+    return {f"head.{k}": float(v) for k, v in zip(HEAD_POSE_KEYS, values, strict=True)}, warned
 
 
 # ------------------------------------------------------------ camera lifecycle

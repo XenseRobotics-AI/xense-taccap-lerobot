@@ -29,8 +29,8 @@ Per side `{s}` ∈ {left, right}:
 | `{s}_tactile_left` / `{s}_tactile_right` | auto-discovered                                 | **recorded** tactile frame from the left / right finger sensor (`rectify`)                                 |
 | `{s}_tactile_{left,right}_difference`    | `tactile_display_output_types='["difference"]'` | **display-only** amplified-deformation view of the same read — Rerun only, never recorded (off by default) |
 | `head_left` / `head_right`               | `--robot.type=xtac_umi_g1`                      | headset camera, one key per **eye** (not per arm) — `head_camera_eyes` can select one                      |
-| `head_camera.x/y/z`                      | `--robot.type=xtac_umi_g1`                      | headset position, same world frame as `{s}_tcp.*`                                                          |
-| `head_camera.r1..r6`                     | `--robot.type=xtac_umi_g1`                      | headset orientation as the first two rotation-matrix columns                                               |
+| `head.x/y/z`                             | `--robot.type=xtac_umi_g1`                      | headset position, same world frame as `{s}_tcp.*`                                                          |
+| `head.r1..r6`                            | `--robot.type=xtac_umi_g1`                      | headset orientation as the first two rotation-matrix columns                                               |
 
 `action_features` = the per-side gripper pose + `{s}_gripper.pos` subset; all images
 remain observation-only, though the head pose is also an action. With both Pico4 trackers

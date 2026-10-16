@@ -466,7 +466,7 @@ class TestHeadPoseKeys:
         assert HEAD_POSE_KEYS == ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6")
 
     def test_head_pose_keys_is_the_shared_pose_layout(self):
-        """``head_camera.*`` is remapped into the same world frame as ``tcp.*``
+        """``head.*`` is remapped into the same world frame as ``tcp.*``
         and carries the same 9 components, so it uses the same tuple rather than
         a parallel copy that could drift."""
         assert HEAD_POSE_KEYS is POSE_KEYS

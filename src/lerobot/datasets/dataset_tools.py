@@ -85,7 +85,7 @@ TACCAP_HEAD_CAMERA_FEATURE_KEYS = frozenset(
 
 TACCAP_8_CAMERA_FEATURE_KEYS = TACCAP_6_CAMERA_FEATURE_KEYS | TACCAP_HEAD_CAMERA_FEATURE_KEYS
 
-HEAD_CAMERA_STATE_NAME_PREFIX = "head_camera."
+HEAD_CAMERA_STATE_NAME_PREFIX = "head."
 
 HEAD_ROBOT_TYPE = "xtac_umi_g1"
 """The robot type that records the headset; ``NO_HEAD_ROBOT_TYPE`` is the same
@@ -521,7 +521,7 @@ def convert_8_to_6_cameras(
 
     The 8-camera format consists of the six bimanual cameras (four tactile pads
     and two wrist cameras) plus the two Pico headset eyes. This conversion drops
-    the headset image keys and the ``head_camera.*`` dimensions from
+    the headset image keys and the ``head.*`` dimensions from
     ``action``/``observation.state``, so downstream training sees the same schema
     as a bimanual recording made with ``enable_head_camera=false``.
 
@@ -572,7 +572,7 @@ def convert_8_to_6_cameras(
             continue
         if not keep_indices:
             raise ValueError(
-                f"Cannot convert {feature_key}: every dimension is a head_camera dimension. "
+                f"Cannot convert {feature_key}: every dimension is a head.* pose dimension. "
                 "Leaving no state/action dimensions would invalidate the dataset."
             )
 

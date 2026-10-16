@@ -98,7 +98,7 @@ a marker with 10 cm axes, labelled `EE` — trailing a breadcrumb of where it ha
 
 With the head camera on, the headset is drawn too — a smaller amber marker
 labelled `HEAD`, no trail. It shares the gripper's world frame (the same
-Pico→world remap is applied to `head_camera.*` as to `tcp.*`), so the two can be
+Pico→world remap is applied to `head.*` as to `tcp.*`), so the two can be
 read against each other: where the operator was looking versus what their hands
 were doing. A trail is deliberately omitted — the head wanders continuously and
 its breadcrumb would bury the gripper trails.
@@ -861,7 +861,7 @@ column subset of a bimanual one.
 | `tactile_left`, `tactile_right` | auto-discovered       | Xense sensor on that finger, recorded view (`rectify`) | uint8 (H, W, 3), landscape — currently (400, 700, 3) |
 | `wrist_cam`                     | `enable_wrist_camera` | wrist UVC via `cameras/`                               | uint8 (H, W, 3)                                      |
 | `head_left`, `head_right`       | `enable_head_camera`  | Pico headset camera, one key per eye                   | uint8 (H, W, 3) — default (480, 640, 3)              |
-| `head_camera.x/y/z/r1..r6`      | `enable_head_camera`  | headset pose, same world frame as `tcp.*`              | float                                                |
+| `head.x/y/z/r1..r6`             | `enable_head_camera`  | headset pose, same world frame as `tcp.*`              | float                                                |
 
 The flags are all `--robot.*` (e.g. `--robot.enable_imu=true`); the tracker and gripper
 ones are on by default, `enable_imu` is off. Disabling one **removes** its keys from the

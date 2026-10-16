@@ -17,8 +17,8 @@ Everything `bi_taccap_gripper` records, plus:
 | Key                        | Meaning                                                |
 | -------------------------- | ------------------------------------------------------ |
 | `head_left` / `head_right` | headset camera, one key per **eye** (not per arm)      |
-| `head_camera.x/y/z`        | headset position, same world frame as `{side}_tcp.*`   |
-| `head_camera.r1..r6`       | headset orientation, first two rotation-matrix columns |
+| `head.x/y/z`               | headset position, same world frame as `{side}_tcp.*`   |
+| `head.r1..r6`              | headset orientation, first two rotation-matrix columns |
 
 So **29 state dimensions** (20 + 9) and **8 camera keys** (6 + 2), against 20 and 6 for
 `bi_taccap_gripper`. The head pose is an action as well as an observation — where the

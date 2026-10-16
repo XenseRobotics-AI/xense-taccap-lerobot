@@ -27,7 +27,7 @@ def _state_names(head_camera_dims: bool) -> list[str]:
         names.extend(f"{side}_tcp.{key}" for key in ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6"))
     names.extend(["left_gripper.pos", "right_gripper.pos"])
     if head_camera_dims:
-        names.extend(f"head_camera.{key}" for key in ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6"))
+        names.extend(f"head.{key}" for key in ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6"))
     return names
 
 
