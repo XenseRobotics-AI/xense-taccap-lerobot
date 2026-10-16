@@ -75,7 +75,7 @@ lerobot-teleoperate \
 ```
 
 The same rig plus the Pico headset: 29 state dimensions (20 + the 9-component
-`head_camera.*` pose) and 8 camera keys (6 + `head_left` / `head_right`). The 3D view
+`head.*` pose) and 8 camera keys (6 + `head_left` / `head_right`). The 3D view
 gains the headset marker.
 
 **The headset is the robot type, not a flag.** `--robot.enable_head_camera` is no longer
@@ -124,7 +124,7 @@ size disagrees with the config, since rescaling would quietly change the recorde
 view. The app's Resolution setting is what produces the frames, so the two must agree.
 
 Capture stores `head_left` and `head_right` — one video key per eye, not a merged frame —
-plus the headset pose as `head_camera.x/y/z/r1..r6`. That pose goes through the same
+plus the headset pose as `head.x/y/z/r1..r6`. That pose goes through the same
 Pico→world remap as the gripper trackers, so it shares their world frame and the same
 rotation-matrix first-two-columns representation; no IMU or timing/age/status metadata is
 stored. `--robot.head_camera_eyes=left` (or `right`) records a single eye.

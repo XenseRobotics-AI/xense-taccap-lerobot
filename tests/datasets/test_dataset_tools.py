@@ -57,7 +57,7 @@ def _taccap_8_camera_features() -> dict:
     for side in ("left", "right"):
         state_names.extend(f"{side}_tcp.{key}" for key in ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6"))
     state_names.extend(["left_gripper.pos", "right_gripper.pos"])
-    state_names.extend(f"head_camera.{key}" for key in ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6"))
+    state_names.extend(f"head.{key}" for key in ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6"))
 
     features = {
         "action": {"dtype": "float32", "shape": (len(state_names),), "names": state_names},
@@ -670,7 +670,7 @@ def test_convert_8_to_6_cameras(empty_lerobot_dataset_factory, tmp_path):
     assert set(converted.meta.camera_keys) == expected_camera_keys
     assert converted.meta.features["action"]["shape"] == (20,)
     assert converted.meta.features["observation.state"]["shape"] == (20,)
-    assert not any(name.startswith("head_camera.") for name in converted.meta.features["action"]["names"])
+    assert not any(name.startswith("head.") for name in converted.meta.features["action"]["names"])
     assert converted.meta.stats["action"]["mean"].shape == (20,)
     assert converted.meta.stats["observation.state"]["mean"].shape == (20,)
     assert not any("head_left" in key or "head_right" in key for key in converted.meta.episodes.features)

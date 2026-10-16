@@ -209,7 +209,7 @@ class TaccapTrajectoryViz:
         img_keys = self._image_keys()
         # The keys are head_left / head_right (head first, eye second — the
         # left_/right_ prefix means an arm everywhere else). Scalars named
-        # head_camera.* are not a risk here — img_keys only carries the image
+        # head.* are not a risk here — img_keys only carries the image
         # features.
         head = sorted((k for k in img_keys if k.startswith("head_")), key=_eye_order)
         wrist = sorted((k for k in img_keys if "wrist" in k), key=_eye_order)
@@ -282,11 +282,11 @@ class TaccapTrajectoryViz:
         series("gripper.pos", [k for k in scalars if k.endswith("gripper.pos")])
         series(
             "head VIO position",
-            [k for k in scalars if k.startswith("head_camera.") and k.split(".")[-1] in ("x", "y", "z")],
+            [k for k in scalars if k.startswith("head.") and k.split(".")[-1] in ("x", "y", "z")],
         )
         series(
             "head VIO rotation",
-            [k for k in scalars if k.startswith("head_camera.") and k.split(".")[-1].startswith("r")],
+            [k for k in scalars if k.startswith("head.") and k.split(".")[-1].startswith("r")],
         )
         series("tcp pose", [k for k in scalars if "_tcp." in k or k.startswith("tcp.")])
         series("tracker pose", [k for k in scalars if "_tracker." in k or k.startswith("tracker.")])
@@ -320,14 +320,14 @@ class TaccapTrajectoryViz:
         # drawing them together shows where the operator was looking relative
         # to what their hands were doing. No trail: the head wanders
         # continuously and its breadcrumb would bury the gripper trails.
-        head = self._extract_pose(data, "head_camera.", "")
+        head = self._extract_pose(data, "head.", "")
         if head is not None:
             self._log_static_once("head")
             self._log_pose("head", head)
 
     def _extract_pose(self, data: dict, prefix: str, frame: str) -> tuple | None:
         # ``frame`` is the middle segment ("tcp"); an empty one lets a caller
-        # pass a fully-formed prefix such as "head_camera.".
+        # pass a fully-formed prefix such as "head.".
         stem = f"{prefix}{frame}." if frame else prefix
         keys = [f"{stem}{k}" for k in _POSE_KEYS]
         if not all(k in data and data[k] is not None for k in keys):

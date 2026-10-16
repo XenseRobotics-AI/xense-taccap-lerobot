@@ -116,13 +116,18 @@ sequence". (`brltty` grabs `1a86` the same way if installed.)
 
 ## Pico headset camera (bimanual: `--robot.type=xtac_umi_g1`; single-arm: `--robot.enable_head_camera`)
 
-Records `head_left` / `head_right` (one key per **eye**) plus `head_camera.*`,
+Records `head_left` / `head_right` (one key per **eye**) plus `head.*`,
 the headset pose. Head first, eye second, on purpose: across TacVerse a
 `left_`/`right_` **prefix** always names an arm (`left_wrist`,
 `left_tactile_left`, `left_tcp.*`), and there is one headset. These were
 `left_head` / `right_head` until TacFlow decision D148 (2026-10-16); Engine's
 `scripts/rename_head_cameras.py` renamed every published dataset, and renames
 older recordings on ingest, so there is no legacy-name fallback here.
+The pose dims followed the same day: `head.{x,y,z,r1..r6}`, not
+`head_camera.*` — the backpack (TacCap-Collector) export already wrote
+`head.*`, and the merge gate saw the two spellings as a schema mismatch. The
+`--robot.head_camera_*` config fields keep their names; they never reach a
+dataset.
 
 - **On the bimanual rig the head is a robot type, not a flag.** `robot_type` in
   `meta/info.json` is written from `robot.name`, a class attribute bound to the
@@ -141,7 +146,7 @@ older recordings on ingest, so there is no legacy-name fallback here.
   (`robot_type_without_head` / `robot_type_after_removing` in `dataset_tools.py`).
   Without that, the same mismatch reappears from the other direction.
 
-- **`head_camera.*` is remapped like the tracker.** Same `PICO_TO_WORLD_R`
+- **`head.*` is remapped like the tracker.** Same `PICO_TO_WORLD_R`
   conjugation, same xyzw→wxyz reorder, so it lands in the world frame `tcp.*`
   uses. The SDK hands out `HeadsetPose` / `ControllerPose` / `MotionTrackerPose`
   through one `stringToPoseArray`, so all three share a layout — do not assume a
