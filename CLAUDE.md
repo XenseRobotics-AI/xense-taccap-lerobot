@@ -116,9 +116,13 @@ sequence". (`brltty` grabs `1a86` the same way if installed.)
 
 ## Pico headset camera (bimanual: `--robot.type=xtac_umi_g1`; single-arm: `--robot.enable_head_camera`)
 
-Records `left_head` / `right_head` (one key per **eye** — on a bimanual rig
-`{side}_wrist` is per-arm, but there is one headset, so the prefix means
-something different) plus `head_camera.*`, the headset pose.
+Records `head_left` / `head_right` (one key per **eye**) plus `head_camera.*`,
+the headset pose. Head first, eye second, on purpose: across TacVerse a
+`left_`/`right_` **prefix** always names an arm (`left_wrist`,
+`left_tactile_left`, `left_tcp.*`), and there is one headset. These were
+`left_head` / `right_head` until TacFlow decision D148 (2026-10-16); Engine's
+`scripts/rename_head_cameras.py` renamed every published dataset, and renames
+older recordings on ingest, so there is no legacy-name fallback here.
 
 - **On the bimanual rig the head is a robot type, not a flag.** `robot_type` in
   `meta/info.json` is written from `robot.name`, a class attribute bound to the

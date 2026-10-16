@@ -30,7 +30,7 @@ Observation features (per side ``{s}`` in left/right):
     {s}_wrist                       -- wrist UVC frame (if enable_wrist_camera)
     {s}_tactile_left / {s}_tactile_right -- recorded tactile frames (sensor on
                                        left/right finger), ``rectify`` by default
-    left_head / right_head    -- Pico headset camera, one key per eye (if
+    head_left / head_right    -- Pico headset camera, one key per eye (if
                                        enable_head_camera). NOTE these name the
                                        headset's EYES, not the left/right arm.
     head_camera.x/y/z/r1..r6        -- headset pose, same world frame as *_tcp.*

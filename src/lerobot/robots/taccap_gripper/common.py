@@ -52,7 +52,7 @@ POSE_KEYS = ("x", "y", "z", "r1", "r2", "r3", "r4", "r5", "r6")
 
 HEAD_POSE_KEYS = POSE_KEYS
 
-HEAD_CAMERA_KEYS = {"left": "left_head", "right": "right_head"}
+HEAD_CAMERA_KEYS = {"left": "head_left", "right": "head_right"}
 
 __all__ = [
     "POSE_KEYS",
@@ -360,7 +360,7 @@ def head_camera_type_mismatch_message(robot_type: str, records_head: bool) -> st
     if records_head:
         return (
             f"{robot_type} always records the headset: its stereo cameras "
-            "(left_head / right_head) and the head_camera.* pose are part of the "
+            "(head_left / head_right) and the head_camera.* pose are part of the "
             "robot type, not a flag, so --robot.enable_head_camera=false is not a "
             "valid combination. To record the same grippers without the headset, "
             "use --robot.type=bi_taccap_gripper."
@@ -369,7 +369,7 @@ def head_camera_type_mismatch_message(robot_type: str, records_head: bool) -> st
         f"{robot_type} does not record the headset, so "
         "--robot.enable_head_camera=true is not a valid combination. Use "
         "--robot.type=xtac_umi_g1, which records the headset's stereo cameras "
-        "(left_head / right_head) and the head_camera.* pose. Recording the head "
+        "(head_left / head_right) and the head_camera.* pose. Recording the head "
         f"under {robot_type} is what wrote a robot_type into meta/info.json that "
         "disagreed with the shape actually recorded."
     )
@@ -379,7 +379,7 @@ def build_head_camera_configs(config: Any) -> dict[str, Any]:
     """One ``PicoCameraConfig`` per recorded eye, keyed by observation name.
 
     Each eye becomes its own camera and its own video key —
-    ``left_head`` / ``right_head`` — rather than one merged
+    ``head_left`` / ``head_right`` — rather than one merged
     double-width frame. Two independent streams are what the headset
     actually sends, so this is the shape with the least translation, and it
     lets a consumer take one eye without decoding both.
@@ -421,7 +421,7 @@ def read_head_camera_skew(cameras: dict[str, Any], max_skew_ms: float) -> float 
     merged frame had, so this is the only thing standing between a
     mis-synchronised stereo pair and a dataset that looks fine.
     """
-    left, right = cameras.get("left_head"), cameras.get("right_head")
+    left, right = cameras.get("head_left"), cameras.get("head_right")
     if left is None or right is None:
         return None
     lm, rm = left.last_frame_meta(), right.last_frame_meta()
@@ -465,7 +465,7 @@ class HeadSkewMonitor:
         self._warned_at = now
         self._logger.warn(
             f"Head camera eyes are {skew:.1f}ms apart (limit {self._max_skew_ms:.0f}ms); "
-            f"{self._count} frames so far. left_head and right_head are recorded as "
+            f"{self._count} frames so far. head_left and head_right are recorded as "
             "separate keys, so a mismatched pair is not otherwise visible in the dataset."
         )
 

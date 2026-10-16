@@ -49,8 +49,8 @@ def _taccap_8_camera_features() -> dict:
         "observation.images.right_wrist",
     ]
     head_camera_keys = [
-        "observation.images.left_head",
-        "observation.images.right_head",
+        "observation.images.head_left",
+        "observation.images.head_right",
     ]
 
     state_names = []
@@ -673,7 +673,7 @@ def test_convert_8_to_6_cameras(empty_lerobot_dataset_factory, tmp_path):
     assert not any(name.startswith("head_camera.") for name in converted.meta.features["action"]["names"])
     assert converted.meta.stats["action"]["mean"].shape == (20,)
     assert converted.meta.stats["observation.state"]["mean"].shape == (20,)
-    assert not any("left_head" in key or "right_head" in key for key in converted.meta.episodes.features)
+    assert not any("head_left" in key or "head_right" in key for key in converted.meta.episodes.features)
     assert converted.meta.total_episodes == 2
 
 
@@ -1472,7 +1472,7 @@ class TestRobotTypeFollowsTheHead:
             assert robot_type_without_head(robot_type) == robot_type
 
     def test_removing_the_head_cameras_relabels(self):
-        removed = ["observation.images.left_head", "observation.images.right_head"]
+        removed = ["observation.images.head_left", "observation.images.head_right"]
         assert robot_type_after_removing("xtac_umi_g1", removed) == "bi_taccap_gripper"
 
     def test_removing_something_else_does_not_relabel(self):

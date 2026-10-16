@@ -76,10 +76,16 @@ def _quat_xyzw_from_6d(r6d) -> list[float]:
 def _eye_order(key: str) -> tuple[int, str]:
     """Sort camera keys left-then-right, as they sit on the operator.
 
-    Plain sorting puts ``right_head`` before ``left_head``, which reads
-    backwards next to a pair of images.
+    Arm keys lead with the side (``left_wrist``); the head keys carry the
+    eye as a suffix (``head_left`` / ``head_right``), so both are checked.
     """
-    side = 0 if key.startswith("left") else 1 if key.startswith("right") else 2
+    side = (
+        0
+        if key.startswith("left") or key == "head_left"
+        else 1
+        if key.startswith("right") or key == "head_right"
+        else 2
+    )
     return (side, key)
 
 
@@ -201,11 +207,11 @@ class TaccapTrajectoryViz:
         into tabs rather than piled into one illegible plot.
         """
         img_keys = self._image_keys()
-        # Match the suffix, not a "head" prefix: the keys are left_head /
-        # right_head, so a prefix test silently dropped them into the tactile
-        # bucket and they ended up in that grid. Scalars named head_camera.*
-        # are not a risk here — img_keys only carries the image features.
-        head = sorted((k for k in img_keys if k.endswith("_head")), key=_eye_order)
+        # The keys are head_left / head_right (head first, eye second — the
+        # left_/right_ prefix means an arm everywhere else). Scalars named
+        # head_camera.* are not a risk here — img_keys only carries the image
+        # features.
+        head = sorted((k for k in img_keys if k.startswith("head_")), key=_eye_order)
         wrist = sorted((k for k in img_keys if "wrist" in k), key=_eye_order)
         tactile = [k for k in img_keys if k not in head and k not in wrist]
 

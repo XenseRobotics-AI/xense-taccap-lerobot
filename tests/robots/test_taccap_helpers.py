@@ -361,8 +361,8 @@ class TestReadHeadCameraSkew:
 
     def test_matching_sequence_numbers_are_a_definitive_pair(self):
         cameras = {
-            "left_head": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_000_000_000}),
-            "right_head": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_500_000_000}),
+            "head_left": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_000_000_000}),
+            "head_right": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_500_000_000}),
         }
         # Negative means "same sequence", which settles it regardless of the
         # timestamps — those can differ for one capture.
@@ -370,24 +370,24 @@ class TestReadHeadCameraSkew:
 
     def test_within_the_window_reports_zero(self):
         cameras = {
-            "left_head": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_000_000_000}),
-            "right_head": FakeHeadCamera({"frame_sequence": 8, "timestamp_ns": 1_005_000_000}),
+            "head_left": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_000_000_000}),
+            "head_right": FakeHeadCamera({"frame_sequence": 8, "timestamp_ns": 1_005_000_000}),
         }
         assert read_head_camera_skew(cameras, max_skew_ms=20.0) == 0.0
 
     def test_beyond_the_window_reports_the_skew_in_ms(self):
         cameras = {
-            "left_head": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_000_000_000}),
-            "right_head": FakeHeadCamera({"frame_sequence": 8, "timestamp_ns": 1_050_000_000}),
+            "head_left": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 1_000_000_000}),
+            "head_right": FakeHeadCamera({"frame_sequence": 8, "timestamp_ns": 1_050_000_000}),
         }
         assert read_head_camera_skew(cameras, max_skew_ms=20.0) == pytest.approx(50.0)
 
     def test_single_eye_recording_has_no_pair_to_check(self):
-        cameras = {"left_head": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 0})}
+        cameras = {"head_left": FakeHeadCamera({"frame_sequence": 7, "timestamp_ns": 0})}
         assert read_head_camera_skew(cameras, max_skew_ms=20.0) is None
 
     def test_before_either_eye_has_a_frame(self):
-        cameras = {"left_head": FakeHeadCamera(None), "right_head": FakeHeadCamera(None)}
+        cameras = {"head_left": FakeHeadCamera(None), "head_right": FakeHeadCamera(None)}
         assert read_head_camera_skew(cameras, max_skew_ms=20.0) is None
 
 
@@ -407,16 +407,16 @@ class HeadConfig:
 class TestBuildHeadCameraConfigs:
     def test_both_eyes_become_two_cameras(self):
         configs = build_head_camera_configs(HeadConfig("both"))
-        assert set(configs) == {"left_head", "right_head"}
+        assert set(configs) == {"head_left", "head_right"}
 
     def test_each_camera_records_a_single_eye(self):
         """One key per eye, not one merged double-width frame — so a consumer
         can take one eye without decoding both."""
         configs = build_head_camera_configs(HeadConfig("both"))
-        assert configs["left_head"].eyes == "left"
-        assert configs["right_head"].eyes == "right"
+        assert configs["head_left"].eyes == "left"
+        assert configs["head_right"].eyes == "right"
         # and therefore the recorded width is per-eye, not doubled
-        assert configs["left_head"].frame_width == 1024
+        assert configs["head_left"].frame_width == 1024
 
     @pytest.mark.parametrize("eye", ["left", "right"])
     def test_selecting_one_eye_builds_only_that_camera(self, eye):
@@ -425,7 +425,7 @@ class TestBuildHeadCameraConfigs:
 
     def test_config_fields_are_passed_through(self):
         configs = build_head_camera_configs(HeadConfig("left"))
-        cfg = configs["left_head"]
+        cfg = configs["head_left"]
         assert (cfg.width, cfg.height, cfg.fps) == (1024, 768, 30)
         assert cfg.pair_max_skew_ms == 20.0
 
@@ -444,8 +444,8 @@ class TestBuildHeadCameraConfigs:
         must not be rejected here, or that setting becomes unusable."""
         config = HeadConfig("left")
         config.head_camera_width, config.head_camera_height = size
-        assert (configs := build_head_camera_configs(config))["left_head"].width == size[0]
-        assert configs["left_head"].height == size[1]
+        assert (configs := build_head_camera_configs(config))["head_left"].width == size[0]
+        assert configs["head_left"].height == size[1]
 
 
 class TestHeadCameraDefaultResolution:
@@ -477,8 +477,8 @@ class TestHeadSkewMonitor:
 
     def _cameras(self, left_seq, left_ns, right_seq, right_ns):
         return {
-            "left_head": FakeHeadCamera({"frame_sequence": left_seq, "timestamp_ns": left_ns}),
-            "right_head": FakeHeadCamera({"frame_sequence": right_seq, "timestamp_ns": right_ns}),
+            "head_left": FakeHeadCamera({"frame_sequence": left_seq, "timestamp_ns": left_ns}),
+            "head_right": FakeHeadCamera({"frame_sequence": right_seq, "timestamp_ns": right_ns}),
         }
 
     def test_paired_frames_do_not_warn(self, monkeypatch):
@@ -519,7 +519,7 @@ class TestHeadSkewMonitor:
     def test_single_eye_never_warns(self):
         logger = FakeLogger()
         monitor = HeadSkewMonitor(20.0, logger)
-        monitor.check({"left_head": FakeHeadCamera({"frame_sequence": 1, "timestamp_ns": 0})})
+        monitor.check({"head_left": FakeHeadCamera({"frame_sequence": 1, "timestamp_ns": 0})})
         assert logger.warnings == []
 
 

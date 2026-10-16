@@ -16,7 +16,7 @@ Everything `bi_taccap_gripper` records, plus:
 
 | Key                        | Meaning                                                |
 | -------------------------- | ------------------------------------------------------ |
-| `left_head` / `right_head` | headset camera, one key per **eye** (not per arm)      |
+| `head_left` / `head_right` | headset camera, one key per **eye** (not per arm)      |
 | `head_camera.x/y/z`        | headset position, same world frame as `{side}_tcp.*`   |
 | `head_camera.r1..r6`       | headset orientation, first two rotation-matrix columns |
 

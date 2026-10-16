@@ -39,7 +39,7 @@ the rig actually reports:
 
 - **Left, largest**: the 3D trajectory view — gripper EE frames with fading trails, plus the
   headset when the head camera is on.
-- **Right, top to bottom**: the head cameras (`left_head` / `right_head`), the wrist cameras
+- **Right, top to bottom**: the head cameras (`head_left` / `head_right`), the wrist cameras
   under them, then the tactile pads in their own grid.
 - **Bottom**: scalars split into tabs by unit — `gripper.pos`, head pose, tcp pose, tracker
   pose, imu. One shared plot would be unreadable, since metres, unit-length
@@ -75,7 +75,7 @@ lerobot-teleoperate \
 ```
 
 The same rig plus the Pico headset: 29 state dimensions (20 + the 9-component
-`head_camera.*` pose) and 8 camera keys (6 + `left_head` / `right_head`). The 3D view
+`head_camera.*` pose) and 8 camera keys (6 + `head_left` / `head_right`). The 3D view
 gains the headset marker.
 
 **The headset is the robot type, not a flag.** `--robot.enable_head_camera` is no longer
@@ -123,7 +123,7 @@ own default. Only that, 1024x768 and 1280x960 are accepted — all 4:3, matching
 size disagrees with the config, since rescaling would quietly change the recorded field of
 view. The app's Resolution setting is what produces the frames, so the two must agree.
 
-Capture stores `left_head` and `right_head` — one video key per eye, not a merged frame —
+Capture stores `head_left` and `head_right` — one video key per eye, not a merged frame —
 plus the headset pose as `head_camera.x/y/z/r1..r6`. That pose goes through the same
 Pico→world remap as the gripper trackers, so it shares their world frame and the same
 rotation-matrix first-two-columns representation; no IMU or timing/age/status metadata is
@@ -341,7 +341,7 @@ One gripper, its two tactile pads and its wrist camera, recorded through the sam
 `tactile_left` / `tactile_right`, `wrist_cam`), so a single-arm dataset is not a
 column subset of a bimanual one. `--robot.enable_head_camera=true` still works **here**
 — the single arm has no headset variant type — and the head keys are unprefixed the same
-way on both robots (`left_head` / `right_head` name the headset's eyes, not the arms).
+way on both robots (`head_left` / `head_right` name the headset's eyes, not the arms).
 On the bimanual rig the equivalent is `--robot.type=xtac_umi_g1`.
 
 `--robot.side` is only needed when both grippers are plugged in; a lone unit
