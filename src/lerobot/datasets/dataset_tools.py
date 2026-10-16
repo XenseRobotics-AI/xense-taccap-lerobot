@@ -78,8 +78,8 @@ TACCAP_6_CAMERA_FEATURE_KEYS = frozenset(
 
 TACCAP_HEAD_CAMERA_FEATURE_KEYS = frozenset(
     {
-        "observation.images.left_head",
-        "observation.images.right_head",
+        "observation.images.head_left",
+        "observation.images.head_right",
     }
 )
 

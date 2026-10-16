@@ -99,8 +99,8 @@ class TestSingleArmActionFeatures:
     def test_images_stay_out_of_the_action(self):
         """The head *camera* is context; only its pose is a target."""
         robot = self._robot(enable_head_camera=True)
-        assert "left_head" in robot.observation_features
-        assert "left_head" not in robot.action_features
+        assert "head_left" in robot.observation_features
+        assert "head_left" not in robot.action_features
         assert not any(isinstance(v, tuple) for v in robot.action_features.values())
 
 
@@ -210,7 +210,7 @@ class TestHeadIsPartOfTheRobotType:
         assert head_keys(robot.observation_features) == {f"head_camera.{s}" for s in POSE_SUFFIXES}
         # The configs the robot decided to open, not ``cameras`` — the camera
         # factory is stubbed out here, so only the decision is observable.
-        assert {"left_head", "right_head"} <= set(robot._camera_configs)
+        assert {"head_left", "head_right"} <= set(robot._camera_configs)
 
 
 class TestRobotIdIsRequired:

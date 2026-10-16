@@ -674,7 +674,7 @@ come from the LeRobot camera framework. `resolve_fisheye()` exists precisely for
 callers in that position, so both paths make the same read-and-fall-back
 decision instead of drifting apart.
 
-- **Head** → obs keys `left_head` / `right_head`, off by default;
+- **Head** → obs keys `head_left` / `head_right`, off by default;
   `--robot.enable_head_camera=true` streams the Pico headset's stereo camera as **one key
   per eye**. `--robot.head_camera_width/_height` accept `640x480` (default), `1024x768` or
   `1280x960`, and must match the headset app's Resolution setting;
@@ -860,7 +860,7 @@ column subset of a bimanual one.
 | `imu.mag.{x,y,z}`               | `enable_imu`          | TacCap IMU                                             | float (µT)                                           |
 | `tactile_left`, `tactile_right` | auto-discovered       | Xense sensor on that finger, recorded view (`rectify`) | uint8 (H, W, 3), landscape — currently (400, 700, 3) |
 | `wrist_cam`                     | `enable_wrist_camera` | wrist UVC via `cameras/`                               | uint8 (H, W, 3)                                      |
-| `left_head`, `right_head`       | `enable_head_camera`  | Pico headset camera, one key per eye                   | uint8 (H, W, 3) — default (480, 640, 3)              |
+| `head_left`, `head_right`       | `enable_head_camera`  | Pico headset camera, one key per eye                   | uint8 (H, W, 3) — default (480, 640, 3)              |
 | `head_camera.x/y/z/r1..r6`      | `enable_head_camera`  | headset pose, same world frame as `tcp.*`              | float                                                |
 
 The flags are all `--robot.*` (e.g. `--robot.enable_imu=true`); the tracker and gripper
