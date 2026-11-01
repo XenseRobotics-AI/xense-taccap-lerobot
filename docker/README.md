@@ -72,7 +72,7 @@ xhost -si:localuser:root
 的 `.env` 里钉死（`.env` 不会被提交）：
 
 ```dotenv
-LEROBOT_IMAGE_TAG=0.1.1
+LEROBOT_IMAGE_TAG=0.1.2
 ```
 
 改完用 `docker compose config --images` 确认解析结果。
@@ -84,7 +84,7 @@ LEROBOT_IMAGE_TAG=0.1.1
 | 跑一次性命令             | `docker compose run --rm xense-taccap lerobot-info`                           |
 | 升级镜像                 | 改 `.env` 的 tag，再 `docker compose pull`                                    |
 | 确认解析到哪个镜像       | `docker compose config --images`                                              |
-| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.1` |
+| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.2` |
 | 确认本地跑的是哪个       | `docker image inspect --format '{{index .RepoDigests 0}}' <镜像>:<tag>`       |
 | 不用 Pico4，关掉随启服务 | `START_XENSEVR_SERVICE=0 docker compose run --rm xense-taccap`                |
 | 查看数据                 | `docker compose run --rm xense-taccap bash -lc 'ls -la /data'`                |
@@ -187,7 +187,9 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 
 ## 版本
 
-当前 **0.1.1**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+当前 **0.1.2**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+
+- **0.1.2** — 功能与 0.1.1 相同，镜像内新增第三方许可证声明（见文末「第三方许可证」）。0.1.1 用户无需升级。
 
 - **0.1.1** — 与文档站 v0.1.1 配套：
   - **夹爪 SDK 升到 v0.4.3**，附带固件 follower 1.2.16（leader 仍为 1.2.6）。**拉取后重跑
