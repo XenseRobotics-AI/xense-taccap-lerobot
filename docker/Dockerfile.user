@@ -163,6 +163,20 @@ RUN bash ./setup_env.sh --install \
 # the ability to switch environments by hand; without it mamba answers
 # "Shell not initialized" and prints setup instructions, which reads like a
 # broken image even though nothing is wrong.
+# Third-party notices for a redistributed image: every Debian, Conda and Python
+# package actually installed above, with its declared license, plus the
+# license texts the Python wheels ship, under
+# /usr/share/doc/xense-taccap-lerobot/. Generated here, after the last install
+# step, so it describes this image and cannot go stale against the lockfiles.
+# The image contains GPL/LGPL components (ffmpeg, pyyaml-include, pygame,
+# pynput, ...) and NVIDIA CUDA runtimes; their licenses require the notice and
+# text to travel with the binaries.
+RUN python docker/generate_third_party_notices.py \
+        --out /usr/share/doc/xense-taccap-lerobot \
+        --conda-prefix "${CONDA_PREFIX}" \
+        --project-root /opt/lerobot \
+    && cp /opt/lerobot/LICENSE /usr/share/doc/xense-taccap-lerobot/LICENSE
+
 RUN install -m 0755 docker/entrypoint.sh /usr/local/bin/lerobot-entrypoint \
     && mkdir -p /data /root/.xensesdk "${HF_HOME}" "${TORCH_HOME}" "${TRITON_CACHE_DIR}" "${XDG_RUNTIME_DIR}" \
     && chmod 0700 "${XDG_RUNTIME_DIR}" \
