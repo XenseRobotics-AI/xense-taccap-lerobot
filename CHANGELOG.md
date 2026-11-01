@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-01
+
+只增加第三方许可证声明，功能与 0.1.1 完全相同。从 `v0.1.1` 拉出发布分支（`release/0.1.2`），只带入许可证声明的提交，未包含 main 上的头显键名改动。
+
+### Added
+
+- 镜像内附第三方许可证声明 `/usr/share/doc/xense-taccap-lerobot/THIRD_PARTY_NOTICES.md`，构建时按实际安装的 deb / conda / Python 包自动生成，并附各 Python 包的许可证原文和本项目 `LICENSE`（`8d9da33c`、`1668948b`）。
+
 ## [0.1.1] - 2026-10-13
 
 与文档站 v0.1.1 配套。按 `v0.1.0..v0.1.1` 之间的提交整理。
