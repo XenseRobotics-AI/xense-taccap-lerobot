@@ -57,7 +57,7 @@ def python_license(meta) -> str:
     classifiers = [
         c.split("::")[-1].strip()
         for c in meta.get_all("Classifier") or []
-        if c.startswith("License ::") and "OSI Approved" != c.split("::")[-1].strip()
+        if c.startswith("License ::") and c.split("::")[-1].strip() != "OSI Approved"
     ]
     if classifiers:
         return "; ".join(classifiers)
@@ -78,7 +78,7 @@ def python_rows(out: Path) -> list[dict]:
             if not f.parts or not f.parts[0].endswith(".dist-info") or f.suffix in {".py", ".pyc"}:
                 continue
             if LICENSE_FILE.search(f.name) or "licenses" in f.parts[1:-1]:
-                src = Path(dist.locate_file(f))
+                src = Path(str(dist.locate_file(f)))
                 if src.is_file():
                     dst = dest_root / name / f.name
                     dst.parent.mkdir(parents=True, exist_ok=True)
@@ -123,8 +123,10 @@ def conda_rows(prefix: Path) -> list[dict]:
 def deb_rows() -> list[dict]:
     try:
         out = subprocess.run(
-            ["dpkg-query", "-W", "-f=${Package}\t${Version}\t${Homepage}\n"],
-            capture_output=True, text=True, check=True,
+            ["/usr/bin/dpkg-query", "-W", "-f=${Package}\t${Version}\t${Homepage}\n"],
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout
     except (OSError, subprocess.CalledProcessError):
         return []
@@ -170,7 +172,7 @@ def main() -> None:
     unknown = [r for r in py if not r["license"] and not FIRST_PARTY.match(r["name"])]
 
     header = (Path(__file__).parent / "THIRD_PARTY_NOTICES.header.md").read_text()
-    stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d")
+    stamp = dt.datetime.now(dt.UTC).strftime("%Y-%m-%d")
     body = [
         header.replace("{{IMAGE_VERSION}}", args.image_version or "unversioned").replace("{{DATE}}", stamp),
         "\n## Summary\n",
@@ -180,14 +182,19 @@ def main() -> None:
         "\n## Copyleft components (GPL / LGPL / MPL and similar)\n",
         "These are distributed unmodified. Their license texts are included as listed, "
         "and their corresponding source is available as described in *Source code offer* above.\n",
-        table(copyleft, [("name", "Component"), ("version", "Version"), ("license", "License"), ("source", "Upstream source")])
-        if copyleft else "_None detected._\n",
+        table(
+            copyleft,
+            [("name", "Component"), ("version", "Version"), ("license", "License"), ("source", "Upstream source")],
+        )
+        if copyleft
+        else "_None detected._\n",
         "\n## Components under proprietary redistributable licenses\n",
         "NVIDIA CUDA/cuDNN runtime libraries are included as runtime dependencies of PyTorch and are "
         "redistributed under the NVIDIA Software License Agreement / CUDA Toolkit EULA, which "
         "permits redistribution of these runtime components with an application.\n",
         table(proprietary, [("name", "Component"), ("version", "Version"), ("license", "License")])
-        if proprietary else "_None detected._\n",
+        if proprietary
+        else "_None detected._\n",
     ]
     if unknown:
         body += [
@@ -197,11 +204,28 @@ def main() -> None:
         ]
     body += [
         "\n## Python distributions\n",
-        table(py, [("name", "Component"), ("version", "Version"), ("license", "License"), ("texts", "License texts"), ("source", "Upstream source")]),
+        table(
+            py,
+            [
+                ("name", "Component"),
+                ("version", "Version"),
+                ("license", "License"),
+                ("texts", "License texts"),
+                ("source", "Upstream source"),
+            ],
+        ),
         "\n## Conda packages\n",
         table(conda, [("name", "Package"), ("version", "Version"), ("license", "License"), ("source", "Channel")]),
         "\n## Debian packages\n",
-        table(deb, [("name", "Package"), ("version", "Version"), ("license", "License (from copyright file)"), ("source", "Homepage")]),
+        table(
+            deb,
+            [
+                ("name", "Package"),
+                ("version", "Version"),
+                ("license", "License (from copyright file)"),
+                ("source", "Homepage"),
+            ],
+        ),
     ]
     (args.out / "THIRD_PARTY_NOTICES.md").write_text("\n".join(body))
     print(
