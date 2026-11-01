@@ -287,3 +287,17 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 | `cuda: False` 但 `nvidia-smi` 正常           | 宿主机 CUDA 状态坏了（挂起/恢复后常见），与容器无关。`sudo rmmod nvidia_uvm && sudo modprobe nvidia_uvm`，或重启                                                                                                                                                                |
 | 找不到 GSPS 但宿主机能看到                   | 确认经 Compose 启动，检查 `ls /dev/v4l/by-id/*GSPS*`，必要时重插 USB Hub 后 `sudo udevadm settle --timeout=20`                                                                                                                                                                  |
 | `groups: cannot find name for group ID <n>`  | 无害。NVIDIA runtime 注入了宿主机的 `render` 组 GID，容器里没有同名组而已                                                                                                                                                                                                       |
+
+## 第三方许可证
+
+镜像内附第三方许可证声明，构建时按实际安装的软件自动生成
+（`docker/generate_third_party_notices.py`）：
+
+```bash
+docker compose run --rm xense-taccap less /usr/share/doc/xense-taccap-lerobot/THIRD_PARTY_NOTICES.md
+```
+
+各 Python 包自带的许可证原文在同目录 `licenses/python/` 下，Debian 包的在
+`/usr/share/doc/<包名>/copyright`。镜像里不含 Docker Engine、Docker Desktop 等
+任何 Docker 公司的软件；宿主机上 `install_customer.sh` 安装的是 Apache-2.0 授权的
+Docker Engine 社区版。
