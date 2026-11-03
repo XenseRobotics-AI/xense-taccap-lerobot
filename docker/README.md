@@ -72,7 +72,7 @@ xhost -si:localuser:root
 的 `.env` 里钉死（`.env` 不会被提交）：
 
 ```dotenv
-LEROBOT_IMAGE_TAG=0.1.1
+LEROBOT_IMAGE_TAG=0.1.3
 ```
 
 改完用 `docker compose config --images` 确认解析结果。
@@ -84,7 +84,7 @@ LEROBOT_IMAGE_TAG=0.1.1
 | 跑一次性命令             | `docker compose run --rm xense-taccap lerobot-info`                           |
 | 升级镜像                 | 改 `.env` 的 tag，再 `docker compose pull`                                    |
 | 确认解析到哪个镜像       | `docker compose config --images`                                              |
-| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.1` |
+| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.3` |
 | 确认本地跑的是哪个       | `docker image inspect --format '{{index .RepoDigests 0}}' <镜像>:<tag>`       |
 | 不用 Pico4，关掉随启服务 | `START_XENSEVR_SERVICE=0 docker compose run --rm xense-taccap`                |
 | 查看数据                 | `docker compose run --rm xense-taccap bash -lc 'ls -la /data'`                |
@@ -187,7 +187,15 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 
 ## 版本
 
-当前 **0.1.1**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+当前 **0.1.3**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+
+- **0.1.3** — **头显相关的数据集字段改名，旧名不兼容**：
+  - 头显相机键改为 `head_left` / `head_right`，头显位姿维度改为 `head.*`（原 `head_camera.*`）。
+    读数据集的下游代码要同步改；存量数据先用 Engine 的 `scripts/rename_head_cameras.py` 改名，再与新数据合并。
+  - **夹爪 SDK 升到 v0.4.4**，附带固件不变（leader 1.2.6 / follower 1.2.16）。**拉取后重跑
+    `./setup_env.sh --install`**。新增视触觉与全链路 Rerun 示例（`gripper_console.py --rerun`，本环境里加 `--no-force`）。
+  - 包含 0.1.2 的第三方许可证声明。
+- **0.1.2** — 功能与 0.1.1 相同，镜像内新增第三方许可证声明。0.1.1 用户无需升级。
 
 - **0.1.1** — 与文档站 v0.1.1 配套：
   - **夹爪 SDK 升到 v0.4.3**，附带固件 follower 1.2.16（leader 仍为 1.2.6）。**拉取后重跑
