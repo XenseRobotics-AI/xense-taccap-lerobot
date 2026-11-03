@@ -16,8 +16,8 @@
 
 ### Changed
 
-- **头显相机键改为 `head_left` / `head_right`**，`videos/` 下的目录随之改名（`d477612f`）。不兼容旧名：读数据集的下游代码要同步改，存量数据用 Engine 的 `scripts/rename_head_cameras.py` 改名。
-- **头显位姿维度改为 `head.{x,y,z,r1..r6}`**（原 `head_camera.*`，即 29 维形态的第 20–28 维），数值与含义不变，与背包导出一致（`3bd59a66`）。不兼容旧名，存量数据同样用 `rename_head_cameras.py` 改名。`--robot.head_camera_*` 配置参数不进数据集，名字不变。
+- **头显相机键改为 `head_left` / `head_right`**，`videos/` 下的目录随之改名（`d477612f`）。不兼容旧名：读数据集的下游代码要同步改。
+- **头显位姿维度改为 `head.{x,y,z,r1..r6}`**（原 `head_camera.*`，即 29 维形态的第 20–28 维），数值与含义不变，与背包导出一致（`3bd59a66`）。不兼容旧名。`--robot.head_camera_*` 配置参数不进数据集，名字不变。
 - `taccap-gripper` 子模块从 `v0.4.3` 升到 `v0.4.4`（`32241074`、`94868a07`、`12946545`）。SDK 接口不变，附带固件不变（leader 1.2.6 / follower 1.2.16）；EL05 电机固件随包，`motor_ota_update.py` 支持 EL05。SDK 日志和报错改为英文，按中文报错文本做匹配的脚本要更新。拉取后重跑 `./setup_env.sh --install`。
 
 ## [0.1.2] - 2026-11-01

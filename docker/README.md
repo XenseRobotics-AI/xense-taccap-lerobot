@@ -191,7 +191,7 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 
 - **0.1.3** — **头显相关的数据集字段改名，旧名不兼容**：
   - 头显相机键改为 `head_left` / `head_right`，头显位姿维度改为 `head.*`（原 `head_camera.*`）。
-    读数据集的下游代码要同步改；存量数据先用 Engine 的 `scripts/rename_head_cameras.py` 改名，再与新数据合并。
+    读数据集的下游代码要同步改。
   - **夹爪 SDK 升到 v0.4.4**，附带固件不变（leader 1.2.6 / follower 1.2.16）。**拉取后重跑
     `./setup_env.sh --install`**。新增视触觉与全链路 Rerun 示例（`gripper_console.py --rerun`，本环境里加 `--no-force`）。
   - 包含 0.1.2 的第三方许可证声明。
