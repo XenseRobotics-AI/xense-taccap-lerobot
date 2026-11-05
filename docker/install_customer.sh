@@ -13,9 +13,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ARCHIVE_PATH="${1:-${XENSE_IMAGE_ARCHIVE:-}}"
 PROXY_URL="${XENSE_PROXY_URL:-}"
-IMAGE_REPOSITORY="${XENSE_IMAGE_REPOSITORY:-}"
+IMAGE_REPOSITORY="${LEROBOT_IMAGE:-${XENSE_IMAGE_REPOSITORY:-}}"
 IMAGE_TAG="${LEROBOT_IMAGE_TAG:-}"
 DEFAULT_IMAGE_REPOSITORY="ghcr.io/xenserobotics-ai/xense-taccap-lerobot"
+MIRROR="${XENSE_MIRROR:-default}"
+DOCKER_APT_URL="https://download.docker.com"
+NVIDIA_APT_URL="https://nvidia.github.io/libnvidia-container"
 TEMP_DIR=""
 DOCKER_CMD=(docker)
 
@@ -40,6 +43,7 @@ archive is given or found next to this script, in which case it is verified
 against SHA256SUMS and loaded from disk instead.
 
 Environment:
+  XENSE_MIRROR=cn          Local image archive + domestic APT sources; no image pull
   XENSE_PROXY_URL          Optional HTTP/HTTPS proxy, e.g. http://127.0.0.1:7897
   XENSE_IMAGE_ARCHIVE      Image archive path when not passed as an argument
   LEROBOT_IMAGE            Override the image repository
@@ -91,10 +95,35 @@ load_os_release() {
 
 apt_get() {
   local apt_options=(-o Acquire::Retries=10 -o Acquire::http::Timeout=60 -o Acquire::https::Timeout=120)
+  if [[ "${MIRROR}" == "cn" ]]; then
+    # Only this install uses the domestic sources. Existing host repositories
+    # (including unreachable third-party ones) are neither used nor overwritten.
+    apt_options+=(-o Dir::Etc::sourcelist=/dev/null -o "Dir::Etc::sourceparts=${TEMP_DIR}/sources.list.d")
+  fi
   if [[ -n "${PROXY_URL}" ]]; then
     apt_options+=(-o Acquire::http::Proxy=false -o "Acquire::https::Proxy=${PROXY_URL}")
   fi
   sudo apt-get "${apt_options[@]}" "$@"
+}
+
+configure_mirrors() {
+  [[ "${MIRROR}" == "cn" ]] || return 0
+  DOCKER_APT_URL="https://mirrors.ustc.edu.cn/docker-ce"
+  NVIDIA_APT_URL="https://mirrors.ustc.edu.cn/libnvidia-container"
+  mkdir -p "${TEMP_DIR}/sources.list.d"
+  local base="https://mirrors.ustc.edu.cn" sources="${TEMP_DIR}/sources.list.d/system.list"
+  if [[ "${DISTRO_ID}" == "ubuntu" ]]; then
+    printf 'deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] %s/ubuntu %s main restricted universe multiverse\n' \
+      "${base}" "${DISTRO_CODENAME}" \
+      "${base}" "${DISTRO_CODENAME}-updates" \
+      "${base}" "${DISTRO_CODENAME}-security" > "${sources}"
+  else
+    printf 'deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] %s %s main\n' \
+      "${base}/debian" "${DISTRO_CODENAME}" \
+      "${base}/debian" "${DISTRO_CODENAME}-updates" \
+      "${base}/debian-security" "${DISTRO_CODENAME}-security" > "${sources}"
+  fi
+  log "Using domestic APT sources for this installation; host OS sources are unchanged."
 }
 
 fetch_url() {
@@ -111,10 +140,10 @@ configure_docker_repository() {
   local key_path="${TEMP_DIR}/docker.asc"
   local source_path="${TEMP_DIR}/docker.sources"
 
-  fetch_url "https://download.docker.com/linux/${DISTRO_ID}/gpg" "${key_path}"
+  fetch_url "${DOCKER_APT_URL}/linux/${DISTRO_ID}/gpg" "${key_path}"
   printf '%s\n' \
     'Types: deb' \
-    "URIs: https://download.docker.com/linux/${DISTRO_ID}" \
+    "URIs: ${DOCKER_APT_URL}/linux/${DISTRO_ID}" \
     "Suites: ${DISTRO_CODENAME}" \
     'Components: stable' \
     'Architectures: amd64' \
@@ -124,6 +153,9 @@ configure_docker_repository() {
   sudo install -d -m 0755 /etc/apt/keyrings
   sudo install -m 0644 "${key_path}" /etc/apt/keyrings/docker.asc
   sudo install -m 0644 "${source_path}" /etc/apt/sources.list.d/docker.sources
+  if [[ "${MIRROR}" == "cn" ]]; then
+    cp "${source_path}" "${TEMP_DIR}/sources.list.d/docker.sources"
+  fi
 }
 
 install_docker() {
@@ -185,7 +217,9 @@ configure_docker_access() {
   if docker info >/dev/null 2>&1; then
     DOCKER_CMD=(docker)
   else
-    DOCKER_CMD=(sudo docker)
+    # sudo normally drops exported variables. Pass the resolved image explicitly
+    # so Compose checks the image we loaded even before group access takes effect.
+    DOCKER_CMD=(sudo "LEROBOT_IMAGE=${IMAGE_REPOSITORY}" "LEROBOT_IMAGE_TAG=${IMAGE_TAG}" docker)
   fi
 }
 
@@ -211,17 +245,21 @@ install_nvidia_container_toolkit() {
     local gpg_key="${TEMP_DIR}/nvidia-container-toolkit-keyring.gpg"
     local source_list="${TEMP_DIR}/nvidia-container-toolkit.list"
     local raw_key="${TEMP_DIR}/nvidia-container-toolkit.key"
-    fetch_url "https://nvidia.github.io/libnvidia-container/gpgkey" "${raw_key}"
+    fetch_url "${NVIDIA_APT_URL}/gpgkey" "${raw_key}"
     gpg --dearmor --yes --output "${gpg_key}" "${raw_key}"
     fetch_url \
-      "https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list" \
+      "${NVIDIA_APT_URL}/stable/deb/nvidia-container-toolkit.list" \
       "${source_list}"
     sed -i \
-      's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
+      -e "s#https://nvidia.github.io/libnvidia-container#${NVIDIA_APT_URL}#g" \
+      -e 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' \
       "${source_list}"
 
     sudo install -m 0644 "${gpg_key}" /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
     sudo install -m 0644 "${source_list}" /etc/apt/sources.list.d/nvidia-container-toolkit.list
+    if [[ "${MIRROR}" == "cn" ]]; then
+      cp "${source_list}" "${TEMP_DIR}/sources.list.d/nvidia-container-toolkit.list"
+    fi
     apt_get update
     apt_get install -y nvidia-container-toolkit nvidia-container-toolkit-base
   fi
@@ -417,7 +455,8 @@ verify_image() {
   # and silencing it would report every one of them as a graphics problem.
   local output="" rc=0
   output="$(
-    "${DOCKER_CMD[@]}" compose -f "${COMPOSE_FILE}" run --rm -T \
+    LEROBOT_IMAGE="${IMAGE_REPOSITORY}" LEROBOT_IMAGE_TAG="${IMAGE_TAG}" \
+    "${DOCKER_CMD[@]}" compose -f "${COMPOSE_FILE}" run --rm -T --pull never \
       --entrypoint bash "${COMPOSE_SERVICE}" -c '
       if python -c "import torch; print(\"torch:\", torch.__version__); print(\"cuda:\", torch.cuda.is_available()); raise SystemExit(0 if torch.cuda.is_available() else 1)"; then
         echo "SMOKE cuda=ok"
@@ -474,6 +513,10 @@ main() {
     return
   fi
 
+  case "${MIRROR}" in
+    default|cn) ;;
+    *) fail "Unknown XENSE_MIRROR=${MIRROR}; expected default or cn." ;;
+  esac
   require_normal_user
   load_os_release
   TEMP_DIR="$(mktemp -d)"
@@ -488,9 +531,11 @@ main() {
     verify_archive
     log "Installing offline from ${ARCHIVE_PATH}"
   else
+    [[ "${MIRROR}" != "cn" ]] || fail "XENSE_MIRROR=cn requires a local image tar and SHA256SUMS. No image will be pulled."
     log "Installing online from ${IMAGE_REPOSITORY}:${IMAGE_TAG}"
   fi
 
+  configure_mirrors
   install_docker
   configure_docker_proxy
   configure_docker_access
