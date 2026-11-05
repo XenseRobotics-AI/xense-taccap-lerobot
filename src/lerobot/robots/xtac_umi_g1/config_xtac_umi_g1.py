@@ -39,8 +39,8 @@ class XtacUmiG1Config(BiTaccapGripperConfig):
     Every gripper, tactile, tracker and wrist-camera field is inherited
     unchanged — this type differs from ``bi_taccap_gripper`` in one respect, and
     the class should keep showing that. The recorded shape is 29 state dims
-    (20 + the 9-component head pose) and 8 cameras (6 + ``left_head`` /
-    ``right_head``).
+    (20 + the 9-component head pose) and 8 cameras (6 + ``head_left`` /
+    ``head_right``).
     """
 
     records_head: ClassVar[bool] = True

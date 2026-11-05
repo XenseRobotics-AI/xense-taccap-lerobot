@@ -30,10 +30,10 @@ Observation features (per side ``{s}`` in left/right):
     {s}_wrist                       -- wrist UVC frame (if enable_wrist_camera)
     {s}_tactile_left / {s}_tactile_right -- recorded tactile frames (sensor on
                                        left/right finger), ``rectify`` by default
-    left_head / right_head    -- Pico headset camera, one key per eye (if
+    head_left / head_right    -- Pico headset camera, one key per eye (if
                                        enable_head_camera). NOTE these name the
                                        headset's EYES, not the left/right arm.
-    head_camera.x/y/z/r1..r6        -- headset pose, same world frame as *_tcp.*
+    head.x/y/z/r1..r6        -- headset pose, same world frame as *_tcp.*
                                        (also an action -- see action_features)
 
 Display-only keys (in ``get_observation()`` and ``display_features``, absent from
@@ -299,7 +299,7 @@ class BiTaccapGripper(Robot):
 
         if self.config.enable_head_camera:
             for key in HEAD_POSE_KEYS:
-                features[f"head_camera.{key}"] = float
+                features[f"head.{key}"] = float
 
         # Tactile + wrist cameras (keys already left_/right_ prefixed).
         # ``frame_width`` differs from ``width`` only for the stereo head
@@ -348,7 +348,7 @@ class BiTaccapGripper(Robot):
         """The 'demonstration' action the rig emits: pose + jaw per side, plus the
         headset pose when the head camera is on. No image data.
 
-        ``head_camera.*`` is unprefixed and appears once, because there is one
+        ``head.*`` is unprefixed and appears once, because there is one
         headset for the two arms. It belongs in the action for the same reason
         ``{side}_tcp.*`` does: where the operator looked while demonstrating is
         something a policy reproduces, it is in the same world frame and the same
@@ -365,7 +365,7 @@ class BiTaccapGripper(Robot):
                 features[f"{side}_gripper.pos"] = float
         if self.config.enable_head_camera:
             for k in HEAD_POSE_KEYS:
-                features[f"head_camera.{k}"] = float
+                features[f"head.{k}"] = float
         return features
 
     @property
@@ -551,7 +551,16 @@ class BiTaccapGripper(Robot):
                         gripper.stop_streaming()
                 except Exception as e:  # pragma: no cover
                     self.logger.warn(f"  [{side}] stop_streaming raised: {e}")
-                # Gripper has no explicit close; transport released on GC.
+                # Release the serial port now: the SDK opens it exclusively and
+                # otherwise frees it only on GC, so a lingering reference would
+                # make a reconnect in this process fail with EBUSY. close()
+                # arrived in SDK 0.3.6; older extensions still free on GC.
+                close = getattr(gripper, "close", None)
+                if close is not None:
+                    try:
+                        close()
+                    except Exception as e:  # pragma: no cover
+                        self.logger.warn(f"  [{side}] gripper close raised: {e}")
                 self._gripper[side] = None
             self._endpoints[side] = None
             self._wrist_undistort_source[side] = None

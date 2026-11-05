@@ -264,9 +264,9 @@ class BiTaccapGripperConfig(RobotConfig):
     recorded shape unable to disagree; see ``XtacUmiG1Config``."""
 
     enable_head_camera: bool = False
-    """Stream the headset's stereo camera as ``left_head`` /
-    ``right_head`` (one key per eye), plus the headset
-    pose as ``head_camera.*``. Shares the Pico SDK connection with the
+    """Stream the headset's stereo camera as ``head_left`` /
+    ``head_right`` (one key per eye), plus the headset
+    pose as ``head.*``. Shares the Pico SDK connection with the
     trackers, so it needs the headset app streaming either way.
 
     Derived from the robot type rather than chosen: passing a value that

@@ -7,7 +7,7 @@ Capture_ Gripper) — a handheld **UMI** leader gripper for tactile data
 collection. This branch tracks **upstream lerobot v5.1**, slimmed to the
 TacCap-Gripper (single + bimanual) and its **Pico4** teleoperator/tracker, with
 Xense tactile cameras layered on top. Either rig can optionally record the
-**Pico headset camera** — one key per eye, `left_head` and `right_head` — plus
+**Pico headset camera** — one key per eye, `head_left` and `head_right` — plus
 the headset pose, in the same position + 6D rotation format and the same world
 frame as the gripper trackers, so head and hands can be read against each other. See
 [`src/lerobot/robots/taccap_gripper/README.md`](src/lerobot/robots/taccap_gripper/README.md)
@@ -280,8 +280,8 @@ robot PC with no cellular modem: `sudo systemctl disable --now ModemManager`.)
 
 On a bimanual rig the headset is chosen by **robot type**, not by a flag:
 `--robot.type=xtac_umi_g1` is the same two TacCap grippers _plus_ the headset,
-recording its stereo camera as **one key per eye** — `left_head` and
-`right_head` — plus the headset pose under `head_camera.*`. Use
+recording its stereo camera as **one key per eye** — `head_left` and
+`head_right` — plus the headset pose under `head.*`. Use
 `--robot.type=bi_taccap_gripper` for the same grippers without it.
 
 ```bash
@@ -312,7 +312,7 @@ no headset variant type, and no single-arm head recording exists to migrate.
   size is an error rather than a silent downgrade, and so is a first frame whose
   size disagrees with the config — rescaling would quietly change the recorded
   field of view, so raising the app's setting means raising these too.
-- **`head_camera.*` shares the world frame with `tcp.*`**, remapped through the
+- **`head.*` shares the world frame with `tcp.*`**, remapped through the
   same Pico→world rotation the tracker uses, so the headset and the grippers can
   be compared directly and are drawn in one 3D scene.
 - **It shares the XenseVR SDK connection with the trackers**, so the headset app

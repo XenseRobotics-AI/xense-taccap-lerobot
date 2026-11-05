@@ -6,9 +6,74 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-05
+
+按 `v0.1.3..v0.1.4` 之间的提交整理。
+
 ### Changed
 
-- 仓库、子模块与 GHCR 镜像路径改到 `XenseRobotics-AI` 组织(`573b820b`;取自 git log,版本页未记录)。
+- `taccap-gripper` 子模块从 `v0.4.4` 升到 `v0.4.5`，附带固件升到 leader **1.2.7** / follower **1.2.17**（协议 V2.9）。新固件把 IMU / 编码器的设备时间戳改为 1 MHz 时基；SDK 0.4.5 已处理，本仓用的是主机单调时钟，录制不受影响。夹爪固件低于附带版本的按 SDK 的 `ota_update.py` 刷写，刷完主爪拔插 USB、从爪断开 24V 约 2 秒再接上。拉取后重跑 `./setup_env.sh --install`。
+- SDK 0.4.5 新增主从爪分时交换（`start_exchange()`）与从爪 IMU 流，本仓暂未启用，录制仍走原来的推送流。
+
+## [0.1.3] - 2026-11-03
+
+从 main 发布，按 `v0.1.1..v0.1.3` 之间的提交整理。许可证声明（`8d9da33c`、`1668948b`）已随 0.1.2 发布，不再列出。
+
+### Added
+
+- `taccap-gripper` 示例新增视触觉查看器 `tactile_sensor.py` 和全链路查看器 `rerun_viewer.py`；`gripper_console.py --rerun` 可以一边用键盘开合从夹爪，一边在 Rerun 里看夹爪状态、腕部相机和视触觉。触觉图像上叠加的是 SDK 自带 `drawMarkerMove` 的 marker flow（SDK 0.4.4，`94868a07`、`12946545`）。在本仓环境里运行要加 `--no-force`：环境不带视触觉推理引擎（`onnxruntime`），只能看图像。
+
+### Changed
+
+- **头显相机键改为 `head_left` / `head_right`**，`videos/` 下的目录随之改名（`d477612f`）。不兼容旧名：读数据集的下游代码要同步改。
+- **头显位姿维度改为 `head.{x,y,z,r1..r6}`**（原 `head_camera.*`，即 29 维形态的第 20–28 维），数值与含义不变，与背包导出一致（`3bd59a66`）。不兼容旧名。`--robot.head_camera_*` 配置参数不进数据集，名字不变。
+- `taccap-gripper` 子模块从 `v0.4.3` 升到 `v0.4.4`（`32241074`、`94868a07`、`12946545`）。SDK 接口不变，附带固件不变（leader 1.2.6 / follower 1.2.16）；EL05 电机固件随包，`motor_ota_update.py` 支持 EL05。SDK 日志和报错改为英文，按中文报错文本做匹配的脚本要更新。拉取后重跑 `./setup_env.sh --install`。
+
+## [0.1.2] - 2026-11-01
+
+只增加第三方许可证声明，功能与 0.1.1 完全相同。从 `v0.1.1` 拉出发布分支（`release/0.1.2`），只带入许可证声明的提交，未包含 main 上的头显键名改动。
+
+### Added
+
+- 镜像内附第三方许可证声明 `/usr/share/doc/xense-taccap-lerobot/THIRD_PARTY_NOTICES.md`，构建时按实际安装的 deb / conda / Python 包自动生成，并附各 Python 包的许可证原文和本项目 `LICENSE`（`8d9da33c`、`1668948b`）。
+
+## [0.1.1] - 2026-10-13
+
+与文档站 v0.1.1 配套。按 `v0.1.0..v0.1.1` 之间的提交整理。
+
+### Changed
+
+- `taccap-gripper` 子模块从 `v0.4.1` 升到 `v0.4.3`,附带固件 follower 1.2.14 → 1.2.16,leader 仍为 1.2.6(`a5f95c57`、`ae21bb21`)。拉取后重跑 `./setup_env.sh --install`。
+- 从夹爪 `ForcePositionController` 跟随流式目标改为按时间插值,不再走走停停;代价是跟踪延迟多约 10ms,目标仍在移动时被挡住进入 `HOLDING_FORCE` 晚约 150ms(SDK 0.4.2)。
+
+## [0.1.0] - 2026-10-07
+
+与文档站 v0.1.0 配套的首个正式版。按 `v0.0.8..v0.1.0` 之间的提交整理。
+
+### Added
+
+- 带头显的双爪独立为机器类型 `xtac_umi_g1`,数据集的 `robot_type` 与录到的状态维度、相机路数一致(`df5d21eb`)。
+- `info.json` 写入 `collection_stack`,声明采集来源,下游不必反推(`8732ebf4`)。
+- 容器内语音播报:镜像装 eSpeak NG,Compose 映射宿主机 PipeWire/PulseAudio(`6719ba7c`)。
+- `CHANGELOG.md`,条目从文档站版本页迁入(`d8d17b79`)。
+
+### Changed
+
+- `taccap-gripper` 子模块从 `3d44440` 逐步升到 `v0.4.1`(附带固件 leader 1.2.6 / follower 1.2.14)(`c9d62a67`…`91c5d49a`)。
+- 仓库、子模块与 GHCR 镜像路径改到 `XenseRobotics-AI` 组织(`573b820b`)。
+- `check-dataset` 视频帧数改为严格相等,并按方向分级(`369c5097`)。
+- tracker→EE 变换统一为一个名字(`62d91b32`)。
+- 基础镜像、frontend 与 BuildKit 改用非 Docker Hub 源(`54ccb6e4`、`7cf50357`)。
+
+### Removed
+
+- 不再录制触觉运行时文件 `meta/runtimes/*.bin`(`36a530b4`)。
+
+### Fixed
+
+- 编辑数据集(`delete_episodes` / `split`)不再把重切的视频硬编码成 AV1,与采集同一套编码(`4adbdaa5`)。
+- 相机释放前先停读取线程,修复退出时偶发段错误;探测失败时仍会释放传感器(`20064359`、`4dad5f0f`)。
+- pico4 去掉没有目录支撑的 aarch64 include 分支(`c14e6d46`)。
 
 ## [0.0.8] - 2026-09-02
 
@@ -120,7 +185,8 @@
 
 版本页从这一版之后才开始按 commit 记录变更,此处无条目。
 
-[Unreleased]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.8...HEAD
+[Unreleased]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.8...v0.1.0
 [0.0.8]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.6...v0.0.7
 [0.0.6]: https://github.com/XenseRobotics-AI/xense-taccap-lerobot/compare/v0.0.5...v0.0.6

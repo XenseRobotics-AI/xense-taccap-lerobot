@@ -31,10 +31,10 @@ Observation features:
     tactile_left / tactile_right     -- recorded tactile frames (sensor on
                                         left/right finger), ``rectify`` by default
     wrist_cam                        -- wrist UVC frame (if enable_wrist_camera)
-    left_head / right_head     -- Pico headset camera, one key per eye
+    head_left / head_right     -- Pico headset camera, one key per eye
                                         (if enable_head_camera; head_camera_eyes
                                         can select a single eye)
-    head_camera.x/y/z/r1..r6         -- headset pose, same world frame as tcp.*
+    head.x/y/z/r1..r6         -- headset pose, same world frame as tcp.*
                                         (also an action -- see action_features)
 
 Display-only keys (present in ``get_observation()`` and in ``display_features``,
@@ -312,7 +312,7 @@ class TaccapGripper(Robot):
 
         if self.config.enable_head_camera:
             for key in HEAD_POSE_KEYS:
-                features[f"head_camera.{key}"] = float
+                features[f"head.{key}"] = float
 
         # ``frame_width`` differs from ``width`` only for the stereo head
         # camera, where ``width`` is one eye and a merged frame is twice that.
@@ -358,7 +358,7 @@ class TaccapGripper(Robot):
         """The 'demonstration' action this device emits when used as a teleop.
 
         Pose (tcp.x/y/z, tcp.r1-r6) + gripper.pos, and the headset pose
-        (head_camera.x/y/z/r1..r6) when the head camera is on.
+        (head.x/y/z/r1..r6) when the head camera is on.
 
         The head pose is an action, not just context: what the operator looked at
         while demonstrating is something a policy is meant to reproduce, and it
@@ -377,7 +377,7 @@ class TaccapGripper(Robot):
             features["gripper.pos"] = float
         if self.config.enable_head_camera:
             for k in HEAD_POSE_KEYS:
-                features[f"head_camera.{k}"] = float
+                features[f"head.{k}"] = float
         return features
 
     @property
@@ -552,7 +552,16 @@ class TaccapGripper(Robot):
                     self._gripper.stop_streaming()
             except Exception as e:  # pragma: no cover
                 self.logger.warn(f"  stop_streaming raised: {e}")
-            # Gripper has no explicit close; transport is released on GC.
+            # Release the serial port now: the SDK opens it exclusively and
+            # otherwise frees it only on GC, so a lingering reference would make
+            # a reconnect in this process fail with EBUSY. close() arrived in
+            # SDK 0.3.6; older extensions still free on GC.
+            close = getattr(self._gripper, "close", None)
+            if close is not None:
+                try:
+                    close()
+                except Exception as e:  # pragma: no cover
+                    self.logger.warn(f"  gripper close raised: {e}")
             self._gripper = None
 
         self._endpoints = None
