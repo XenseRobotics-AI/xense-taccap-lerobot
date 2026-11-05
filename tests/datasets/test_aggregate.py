@@ -644,3 +644,43 @@ def test_video_files_rotate_at_the_size_limit(tmp_path, lerobot_dataset_factory)
         for path in files[:-1]:
             size_mb = path.stat().st_size / 1e6
             assert size_mb < limit_mb * 2, f"{path.name} is {size_mb:.3f} MB, limit is {limit_mb}"
+
+
+def test_aggregate_video_only_keeps_fixed_size_lists(tmp_path, lerobot_dataset_factory):
+    """A video-only dataset keeps its declared parquet schema through aggregation.
+
+    The writer used to pass the HF features only when the dataset had inline
+    `image` features. Without them pandas infers the types, and inference
+    cannot recover a length from a column of arrays: `action`, declared with
+    shape (6,), came back as `list<float>` instead of `fixed_size_list<float>[6]`,
+    and nothing raised. Every TacCap dataset is video-only.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    sources = [
+        lerobot_dataset_factory(
+            root=tmp_path / f"test_{i}",
+            repo_id=f"{DUMMY_REPO_ID}_{i}",
+            total_episodes=3,
+            total_frames=60,
+        )
+        for i in range(2)
+    ]
+    assert not sources[0].meta.image_keys, "the fixture must be video-only for this test"
+
+    aggregate_datasets(
+        repo_ids=[ds.repo_id for ds in sources],
+        roots=[ds.root for ds in sources],
+        aggr_repo_id=f"{DUMMY_REPO_ID}_aggr",
+        aggr_root=tmp_path / "test_aggr",
+    )
+
+    files = sorted((tmp_path / "test_aggr" / "data").rglob("*.parquet"))
+    assert files
+    for path in files:
+        schema = pq.read_schema(path)
+        action = schema.field("action").type
+        assert pa.types.is_fixed_size_list(action), f"{path.name}: action is {action}"
+        assert action.list_size == 6, f"{path.name}: action is {action}"
+        assert b"huggingface" in (schema.metadata or {}), f"{path.name}: {schema.metadata}"
