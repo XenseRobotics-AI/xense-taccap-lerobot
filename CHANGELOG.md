@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-06
+
+按 `v0.1.4..v0.1.5` 之间的提交整理。
+
+### Fixed
+
+- 合并数据集（`aggregate_datasets`）不再把纯视频数据集的定长列写成变长列：此前只在有内联图像特征时才按声明的 schema 写 parquet，纯视频数据集（TacCap 录的都是）合并后 `action` / `observation.state` 从 `fixed_size_list<float>[N]` 退化为 `list<float>`，schema 元数据从 `huggingface` 变成 `pandas`，与自己的 `info.json` 不一致且不报错（`4627c1d0`）。新增回归测试（`c6c4cfc6`）。已经合并过的数据集需要重新合并才能恢复定长列。
+
 ## [0.1.4] - 2026-11-05
 
 按 `v0.1.3..v0.1.4` 之间的提交整理。

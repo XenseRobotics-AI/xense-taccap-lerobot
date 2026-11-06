@@ -72,7 +72,7 @@ xhost -si:localuser:root
 的 `.env` 里钉死（`.env` 不会被提交）：
 
 ```dotenv
-LEROBOT_IMAGE_TAG=0.1.4
+LEROBOT_IMAGE_TAG=0.1.5
 ```
 
 改完用 `docker compose config --images` 确认解析结果。
@@ -84,7 +84,7 @@ LEROBOT_IMAGE_TAG=0.1.4
 | 跑一次性命令             | `docker compose run --rm xense-taccap lerobot-info`                           |
 | 升级镜像                 | 改 `.env` 的 tag，再 `docker compose pull`                                    |
 | 确认解析到哪个镜像       | `docker compose config --images`                                              |
-| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.4` |
+| 看远端有什么（不下载）   | `docker manifest inspect ghcr.io/xenserobotics-ai/xense-taccap-lerobot:0.1.5` |
 | 确认本地跑的是哪个       | `docker image inspect --format '{{index .RepoDigests 0}}' <镜像>:<tag>`       |
 | 不用 Pico4，关掉随启服务 | `START_XENSEVR_SERVICE=0 docker compose run --rm xense-taccap`                |
 | 查看数据                 | `docker compose run --rm xense-taccap bash -lc 'ls -la /data'`                |
@@ -187,8 +187,10 @@ dpkg-query -W -f='daemon -> ${Version}\n' xensevr-pc-service
 
 ## 版本
 
-当前 **0.1.4**（`latest` 指向同一镜像）。只列影响使用方式的变化：
+当前 **0.1.5**（`latest` 指向同一镜像）。只列影响使用方式的变化：
 
+- **0.1.5** — 合并数据集时纯视频数据集的定长列（`action`、`observation.state`）不再退化为变长列。
+  只影响合并（aggregate）出来的数据集，录制不变；之前合并过的数据集重新合并即可恢复。
 - **0.1.4** — **夹爪 SDK 升到 v0.4.5**，附带固件升到 leader 1.2.7 / follower 1.2.17。**拉取后重跑
   `./setup_env.sh --install`**；固件低于附带版本的按 SDK 的 `ota_update.py` 刷写，刷完主爪拔插 USB、从爪断开 24V 约 2 秒再接上。
   录制方式与数据格式不变。
