@@ -264,6 +264,13 @@ class OpenCVCamera(Camera):
         if self.videocapture is None:
             raise DeviceNotConnectedError(f"{self} videocapture is not initialized")
 
+        # Request the FOURCC before resolution and FPS: some cameras only reach the
+        # requested rate in a compressed format (the XCA28Z wrist camera at
+        # 1920x1080 does 30 fps in MJPG but 5 fps in its default YUYV), so the FPS
+        # check below would fail while the device is still in YUYV.
+        if self.config.fourcc is not None:
+            self.videocapture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self.config.fourcc))
+
         default_width = int(round(self.videocapture.get(cv2.CAP_PROP_FRAME_WIDTH)))
         default_height = int(round(self.videocapture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
 
@@ -281,7 +288,7 @@ class OpenCVCamera(Camera):
         else:
             self._validate_fps()
 
-        # Set FOURCC last so resolution/FPS are established first
+        # Set and validate the FOURCC again now that resolution/FPS are established
         if self.config.fourcc is not None:
             self._validate_fourcc()
 

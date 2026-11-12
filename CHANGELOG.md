@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- OpenCV 相机先请求 FOURCC（默认 MJPG），再设分辨率与帧率。此前 FOURCC 最后才设，只有 MJPG 才能到目标帧率的相机会在默认 YUYV 下校验帧率失败：新主爪的 1920x1080 腕部相机 YUYV 下只有 5 fps，`--robot.wrist_camera_width=1920 --robot.wrist_camera_height=1080` 连接即报 `failed to set fps=30 (actual_fps=5.0)`。FOURCC 仍在最后再设一次并校验，原有相机行为不变。
+
 ## [0.1.6] - 2026-11-12
 
 按 `v0.1.5..v0.1.6` 之间的提交整理。
