@@ -261,6 +261,23 @@ class TestDiscoverTactilesByHub:
             "right": {"left": "GSPS01A25Z0013", "right": "GSPS01A25Z0014"},
         }
 
+    def test_suffixed_serials_are_kept_whole_and_fingered_by_sequence(self, monkeypatch):
+        """Newer modules carry a role patch (``GSPS01A29Z0023m``). xensesdk opens a
+        sensor by its full USB serial, so the suffix must survive discovery, and
+        the finger still comes from the sequence's last digit, not the letter."""
+        self._install(
+            monkeypatch,
+            hub_sides={self.LEFT_HUB: ("left", "TCGU01A28Z0037m")},
+            tactiles={
+                "usb-HLC-261112-WAI_GSPS01A29Z0025m_GSPS01A29Z0025m-video-index0": self.LEFT_HUB,
+                "usb-HLC-261112-WAI_GSPS01A29Z0026m_GSPS01A29Z0026m-video-index0": self.LEFT_HUB,
+            },
+        )
+
+        got = disco.discover_tactiles_by_hub("leader")
+
+        assert got["left"] == {"left": "GSPS01A29Z0025m", "right": "GSPS01A29Z0026m"}
+
     def test_the_gripper_decides_the_side_not_the_tactile_serial(self, monkeypatch):
         """Sensors whose own serials are all odd still land on the right side if
         that is where their gripper says they are. This is the rule that makes

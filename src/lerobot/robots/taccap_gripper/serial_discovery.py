@@ -19,7 +19,9 @@ Serial grammar
 --------------
 - Gripper ``TCGU01A24Z0001m`` : ``TCGU01`` + batch(``A24``) + line(``Z``|``A``) +
   sequence(``NNNN``) + patch(``m``|``s``)
-- Tactile ``GSPS01A24Z0001``  : ``GSPS01`` + batch + line + sequence
+- Tactile ``GSPS01A24Z0001``  : ``GSPS01`` + batch + line + sequence, optionally +
+  patch(``m``|``s``) — newer modules (e.g. ``GSPS01A29Z0023m``) carry it. The
+  serial is kept whole: xensesdk opens the sensor by its full USB serial.
 - Camera  ``XCA24Z0001m``     : ``XC`` + batch + line + sequence + patch(``m``|``s``)
 
 Rule: the **last digit of the 4-digit sequence is odd → left, even → right**
@@ -82,11 +84,11 @@ _USB_PORT_RE = re.compile(r"^(.*)-usb-(\d+):([\d.]+):")
 
 # Full-grammar validators (the documented rule).
 _GRIPPER_RE = re.compile(r"^TCGU01[A-Z]\d{2}[ZA](\d{4})([ms])$")
-_TACTILE_RE = re.compile(r"^GSPS01[A-Z]\d{2}[ZA](\d{4})$")
+_TACTILE_RE = re.compile(r"^GSPS01[A-Z]\d{2}[ZA](\d{4})([ms])?$")
 _CAMERA_RE = re.compile(r"^XC[A-Z]\d{2}[ZA](\d{4})([ms])$")
 
 # Serial extractors for the /dev/v4l/by-id device names.
-_TACTILE_BYID_RE = re.compile(r"(GSPS01[A-Z]\d{2}[ZA]\d{4})")
+_TACTILE_BYID_RE = re.compile(r"(GSPS01[A-Z]\d{2}[ZA]\d{4}[ms]?)")
 _CAMERA_BYID_RE = re.compile(r"(XC[A-Z]\d{2}[ZA]\d{4}[ms])")
 
 _PATCH_ROLE = {"m": "leader", "s": "follower"}
@@ -338,14 +340,15 @@ def discover_tactiles_by_hub(role: str) -> dict[str, dict[str, str]]:
         if sn in seen:
             continue
         seen.add(sn)
-        if not _TACTILE_RE.match(sn):
+        grammar = _TACTILE_RE.match(sn)
+        if not grammar:
             raise ValueError(
-                f"Tactile serial {sn!r} does not match the rule GSPS01<batch><line><seq> (e.g. GSPS01A24Z0003)."
+                f"Tactile serial {sn!r} does not match the rule GSPS01<batch><line><seq>[m|s] (e.g. GSPS01A24Z0003)."
             )
         hub = _device_hub(path, _V4L_BYPATH_DIR)
         if hub is None:
             raise ValueError(f"Could not resolve a USB hub for tactile {sn!r} ({path}); check /dev/v4l/by-path.")
-        finger = side_of_sequence(sn[-4:])  # last digit → left/right finger
+        finger = side_of_sequence(grammar.group(1))  # last digit of the sequence → left/right finger
         fingers = hub_fingers.setdefault(hub, {})
         if finger in fingers:
             raise ValueError(
