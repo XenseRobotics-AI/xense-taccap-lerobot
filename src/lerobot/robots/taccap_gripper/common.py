@@ -818,8 +818,9 @@ class GripperReadGuard:
         ~31 ms each). Streaming both is what leaves no per-frame command on the
         bus for that to bite.
 
-        Leaders only, by the caller's choice: follower firmware streams motor
-        status and nothing else, and silently ignores the encoder/IMU rates.
+        Leaders only: follower firmware streams motor status and nothing else,
+        and silently ignores the encoder/IMU rates. Followers use
+        :meth:`subscribe_follower`.
 
         Falls back to polling — logged, not raised — if the stream cannot be
         brought up or delivers nothing within ``first_sample_timeout_s``: a rig
@@ -856,6 +857,59 @@ class GripperReadGuard:
         self._logger.info(f"  {label}{what} streamed by the firmware at {encoder_hz} Hz; no per-frame bus round-trip.")
         return True
 
+    def subscribe_follower(
+        self,
+        key: str,
+        gripper: Any,
+        *,
+        motor_hz: int,
+        label: str = "",
+        first_sample_timeout_s: float = 1.0,
+    ) -> bool:
+        """The follower counterpart of :meth:`subscribe`: jaw position from motor status.
+
+        A follower has no encoder. Its jaw *is* the motor, and the firmware
+        answers ``Cmd::GetEncoder`` with ``NACK: InvalidCmd`` — so the polled
+        path (:func:`read_gripper_normalized`) can never succeed on one, and a
+        follower rig was declared lost before its first frame. Instead the
+        firmware streams motor status (``start_streaming(motor_hz=...)``), each
+        sample's shaft angle is converted with the device's own travel
+        calibration (``position_map().to_position``, the same converter
+        ``FollowerGripper.position()`` uses), and :meth:`read` serves the cache
+        exactly as it does for a leader's encoder. Read-only: the motor is never
+        enabled.
+
+        Unlike the leader path there is no polling fallback: a follower that
+        cannot stream has no other way to report its position, so failure here
+        is returned as False and the read guard reports loss.
+
+        Returns:
+            True if ``key`` now streams; False otherwise.
+        """
+        stream = _GripperStream(gripper)
+        try:
+            pm = gripper.position_map()
+            if not pm.valid:
+                raise RuntimeError("the follower has no travel calibration (gripper_config not valid)")
+            stream.motor_sub = gripper.motor.on_status(stream.on_motor_status(pm))
+            gripper.start_streaming(motor_hz=motor_hz)
+
+            deadline = time.monotonic() + first_sample_timeout_s
+            while stream.latest_encoder()[0] is None:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"no motor status within {first_sample_timeout_s:.1f}s of StartStream")
+                time.sleep(0.01)
+        except Exception as e:
+            self._logger.error(f"  {label}follower motor-status stream unavailable ({e}); jaw position cannot be read.")
+            self._teardown_stream(stream, label)
+            return False
+
+        self._streams[key] = stream
+        self._logger.info(
+            f"  {label}follower jaw position from motor status at {motor_hz} Hz (device travel calibration)."
+        )
+        return True
+
     def unsubscribe_all(self) -> None:
         """Stop every stream. Call before the grippers are released, so the
         SDK is not left calling into a guard for a device that is going away."""
@@ -865,7 +919,7 @@ class GripperReadGuard:
 
     def _teardown_stream(self, stream: _GripperStream, label: str) -> None:
         gripper = stream.gripper
-        for attr, component in (("enc_sub", "encoder"), ("imu_sub", "imu")):
+        for attr, component in (("enc_sub", "encoder"), ("imu_sub", "imu"), ("motor_sub", "motor")):
             sub_id = getattr(stream, attr)
             if sub_id is None:
                 continue
@@ -1015,6 +1069,7 @@ class _GripperStream:
         self.gripper = gripper
         self.enc_sub: Any = None
         self.imu_sub: Any = None
+        self.motor_sub: Any = None
         self._lock = threading.Lock()
         self._enc: SimpleNamespace | None = None
         self._enc_at = 0.0
@@ -1029,6 +1084,23 @@ class _GripperStream:
         now = time.monotonic()
         with self._lock:
             self._enc, self._enc_at = reading, now
+
+    def on_motor_status(self, position_map: Any) -> Any:
+        """A motor-status callback that caches the jaw opening as an encoder reading.
+
+        ``position_map.to_position`` turns the raw shaft angle into the device's
+        own 0..1 opening, so the cached reading has the same shape the leader
+        path stores and :func:`normalize_encoder_sample` reads it unchanged.
+        """
+
+        def cb(sample: Any) -> None:
+            raw = float(sample.actual_pos)
+            reading = SimpleNamespace(position=float(position_map.to_position(raw)), position_rad=raw)
+            now = time.monotonic()
+            with self._lock:
+                self._enc, self._enc_at = reading, now
+
+        return cb
 
     def on_imu(self, sample: Any) -> None:
         # The binding builds a fresh numpy array per property access, so

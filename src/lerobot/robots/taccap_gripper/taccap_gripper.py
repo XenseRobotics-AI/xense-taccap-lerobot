@@ -460,14 +460,22 @@ class TaccapGripper(Robot):
             # Take the per-frame encoder round-trip off the record loop: the
             # firmware pushes samples and get_observation reads a cache. See
             # GripperReadGuard.subscribe for why, and config.gripper_stream_hz
-            # for the knob. Leaders only — follower firmware does not stream
-            # the encoder, so a follower keeps polling.
+            # for the knob. The encoder stream is leaders only; a follower
+            # streams motor status instead (below).
             if self.config.gripper_stream_hz > 0 and self._role == "leader":
                 self._enc_guard.subscribe(
                     "gripper",
                     self._gripper,
                     encoder_hz=self.config.gripper_stream_hz,
                     imu=self.config.enable_imu,
+                )
+            elif self._role == "follower":
+                # A follower has no encoder; its jaw position comes from the
+                # streamed motor status. See GripperReadGuard.subscribe_follower.
+                self._enc_guard.subscribe_follower(
+                    "gripper",
+                    self._gripper,
+                    motor_hz=self.config.gripper_stream_hz or 100,
                 )
 
         # 1b. Wrist fisheye undistortion, if asked for. Built here — after the

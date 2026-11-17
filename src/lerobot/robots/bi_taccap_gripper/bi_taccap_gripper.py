@@ -453,14 +453,23 @@ class BiTaccapGripper(Robot):
 
                 # Firmware push instead of a per-frame round-trip — two of them
                 # on this rig. See GripperReadGuard.subscribe and
-                # config.gripper_stream_hz. Leaders only: follower firmware does
-                # not stream the encoder.
+                # config.gripper_stream_hz. The encoder stream is leaders only;
+                # a follower streams motor status instead (below).
                 if self.config.gripper_stream_hz > 0 and self._role == "leader":
                     self._enc_guard.subscribe(
                         side,
                         self._gripper[side],
                         encoder_hz=self.config.gripper_stream_hz,
                         imu=getattr(self.config, f"{side}_enable_imu"),
+                        label=f"[{side}] ",
+                    )
+                elif self._role == "follower":
+                    # A follower has no encoder; its jaw position comes from the
+                    # streamed motor status. See GripperReadGuard.subscribe_follower.
+                    self._enc_guard.subscribe_follower(
+                        side,
+                        self._gripper[side],
+                        motor_hz=self.config.gripper_stream_hz or 100,
                         label=f"[{side}] ",
                     )
 

@@ -73,6 +73,17 @@ class TestParseCameraSerial:
         assert disco.parse_camera_serial("XCA24Z0004s") == ("right", "follower")
 
     @pytest.mark.parametrize(
+        ("sn", "expected"),
+        [
+            ("XCA28Z0089S", ("left", "follower")),  # updated follower wrist camera
+            ("XCA45A0016S", ("right", "follower")),
+            ("XCA28Z0095M", ("left", "leader")),
+        ],
+    )
+    def test_upper_case_patch_is_accepted(self, sn, expected):
+        assert disco.parse_camera_serial(sn) == expected
+
+    @pytest.mark.parametrize(
         "bad",
         [
             "XCA24Z0003",  # no role patch

@@ -1694,3 +1694,117 @@ class TestGripperReadGuardStream:
             assert g.is_streaming is False and g.stopped == 1
         assert guard.read("left", left, 1.0) == pytest.approx(0.1)
         assert left.read_once_calls == 1, "after unsubscribe the guard polls again"
+
+
+class FakeFollowerGripper:
+    """A follower: no encoder command (InvalidCmd), position from motor status.
+
+    ``start_streaming(motor_hz=...)`` delivers one status synchronously, the way
+    the real stream's first frame arrives within milliseconds. ``encoder.read_once``
+    raises like the firmware's NACK so a test can prove it is never called.
+    """
+
+    class _PositionMap:
+        def __init__(self, max_rad: float, valid: bool = True):
+            self.max_rad, self.valid = max_rad, valid
+
+        def to_position(self, raw_rad: float) -> float:
+            return min(1.0, max(0.0, raw_rad / self.max_rad))
+
+    class _Status:
+        def __init__(self, actual_pos: float):
+            self.actual_pos = actual_pos
+
+    class _Motor:
+        def __init__(self):
+            self.callbacks: dict[int, object] = {}
+            self._next = 1
+
+        def on_status(self, cb):
+            sub_id = self._next
+            self._next += 1
+            self.callbacks[sub_id] = cb
+            return sub_id
+
+        def off(self, sub_id):
+            self.callbacks.pop(sub_id)
+
+        def push(self, actual_pos: float):
+            for cb in list(self.callbacks.values()):
+                cb(FakeFollowerGripper._Status(actual_pos))
+
+    class _Encoder:
+        def __init__(self):
+            self.read_once_calls = 0
+
+        def read_once(self):
+            self.read_once_calls += 1
+            raise RuntimeError("NACK: InvalidCmd")
+
+    def __init__(self, actual_pos: float = 0.6, max_rad: float = 1.2, calibrated: bool = True, silent: bool = False):
+        self.motor = self._Motor()
+        self.encoder = self._Encoder()
+        self._pm = self._PositionMap(max_rad, valid=calibrated)
+        self._first = actual_pos
+        self.silent = silent
+        self.is_streaming = False
+        self.motor_hz: int | None = None
+        self.stopped = 0
+
+    def position_map(self):
+        return self._pm
+
+    def start_streaming(self, motor_hz: int):
+        self.motor_hz = motor_hz
+        self.is_streaming = True
+        if not self.silent:
+            self.motor.push(self._first)
+
+    def stop_streaming(self):
+        self.is_streaming = False
+        self.stopped += 1
+
+
+class TestGripperReadGuardFollower:
+    """A follower's jaw position comes from motor status, never the encoder.
+
+    The encoder command is a NACK on follower firmware, so the old polled path
+    declared every follower rig lost before its first frame."""
+
+    def test_position_comes_from_motor_status_not_the_encoder(self):
+        guard = GripperReadGuard(FakeLogger())
+        follower = FakeFollowerGripper(actual_pos=0.6, max_rad=1.2)
+
+        assert guard.subscribe_follower("left", follower, motor_hz=100) is True
+        assert follower.motor_hz == 100
+
+        assert guard.read("left", follower, 1.0) == pytest.approx(0.5)
+        follower.motor.push(1.2)
+        assert guard.read("left", follower, 1.0) == pytest.approx(1.0)
+        assert follower.encoder.read_once_calls == 0, "a follower has no encoder to poll"
+        assert not guard.lost
+
+    def test_uncalibrated_follower_is_refused(self):
+        guard = GripperReadGuard(FakeLogger())
+        follower = FakeFollowerGripper(calibrated=False)
+
+        assert guard.subscribe_follower("left", follower, motor_hz=100) is False
+        assert follower.motor.callbacks == {}, "the subscription must be torn down"
+        assert follower.is_streaming is False
+
+    def test_a_silent_stream_is_refused_and_torn_down(self):
+        guard = GripperReadGuard(FakeLogger())
+        follower = FakeFollowerGripper(silent=True)
+
+        assert guard.subscribe_follower("left", follower, motor_hz=100, first_sample_timeout_s=0.05) is False
+        assert follower.motor.callbacks == {} and follower.stopped == 1
+
+    def test_unsubscribe_all_stops_the_motor_stream(self):
+        guard = GripperReadGuard(FakeLogger())
+        follower = FakeFollowerGripper()
+        guard.subscribe_follower("left", follower, motor_hz=100)
+
+        guard.unsubscribe_all()
+
+        assert follower.motor.callbacks == {}
+        assert follower.is_streaming is False and follower.stopped == 1

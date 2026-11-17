@@ -8,6 +8,8 @@
 
 ### Fixed
 
+- 从夹爪（`--robot.role=follower`）可以录制了：此前每帧用读编码器的命令取开口度，而从夹爪固件没有编码器命令（回复 `NACK: InvalidCmd`），连上后马上判定夹爪丢失、0 帧。现在从夹爪改为订阅电机状态流（100 Hz），按设备自己的行程标定换算成 0..1，与 SDK 的 `g.position()` 一致。只读，不使能电机。
+- 腕部相机序列号末尾的角色字母大小写都认：升级后的从夹爪腕相机报 `XCA28Z0089S`（大写 `S`），此前找不到腕相机。视触觉序列号同样处理。
 - 视触觉序列号带角色后缀的新模组（如 `GSPS01A29Z0023m`）能被发现并打开：此前发现时把后缀截掉，按 `GSPS01A29Z0023` 去开传感器，xensesdk 报 `Bad serial number`。现在保留完整序列号，哪根手指仍按 4 位流水号的末位判断。旧的无后缀序列号不受影响。
 - OpenCV 相机先请求 FOURCC（默认 MJPG），再设分辨率与帧率。此前 FOURCC 最后才设，只有 MJPG 才能到目标帧率的相机会在默认 YUYV 下校验帧率失败：新主爪的 1920x1080 腕部相机 YUYV 下只有 5 fps，`--robot.wrist_camera_width=1920 --robot.wrist_camera_height=1080` 连接即报 `failed to set fps=30 (actual_fps=5.0)`。FOURCC 仍在最后再设一次并校验，原有相机行为不变。
 

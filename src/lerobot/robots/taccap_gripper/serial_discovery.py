@@ -83,13 +83,17 @@ _SERIAL_BYPATH_DIR = "/dev/serial/by-path"
 _USB_PORT_RE = re.compile(r"^(.*)-usb-(\d+):([\d.]+):")
 
 # Full-grammar validators (the documented rule).
-_GRIPPER_RE = re.compile(r"^TCGU01[A-Z]\d{2}[ZA](\d{4})([ms])$")
-_TACTILE_RE = re.compile(r"^GSPS01[A-Z]\d{2}[ZA](\d{4})([ms])?$")
-_CAMERA_RE = re.compile(r"^XC[A-Z]\d{2}[ZA](\d{4})([ms])$")
+# The m/s patch is matched in either case: updated follower wrist cameras report
+# XCA28Z0089S while the gripper's firmware SN still reads ...0089s. Serials are
+# kept as the device reports them (they name the /dev/ nodes and xensesdk opens
+# sensors by them); the role is read from the patch lowercased.
+_GRIPPER_RE = re.compile(r"^TCGU01[A-Z]\d{2}[ZA](\d{4})([msMS])$")
+_TACTILE_RE = re.compile(r"^GSPS01[A-Z]\d{2}[ZA](\d{4})([msMS])?$")
+_CAMERA_RE = re.compile(r"^XC[A-Z]\d{2}[ZA](\d{4})([msMS])$")
 
 # Serial extractors for the /dev/v4l/by-id device names.
-_TACTILE_BYID_RE = re.compile(r"(GSPS01[A-Z]\d{2}[ZA]\d{4}[ms]?)")
-_CAMERA_BYID_RE = re.compile(r"(XC[A-Z]\d{2}[ZA]\d{4}[ms])")
+_TACTILE_BYID_RE = re.compile(r"(GSPS01[A-Z]\d{2}[ZA]\d{4}[msMS]?)")
+_CAMERA_BYID_RE = re.compile(r"(XC[A-Z]\d{2}[ZA]\d{4}[msMS])")
 
 _PATCH_ROLE = {"m": "leader", "s": "follower"}
 # ``master``/``slave`` are legacy spellings, still accepted so existing scripts
@@ -262,7 +266,7 @@ def parse_camera_serial(sn: str) -> tuple[str, str]:
     m = _CAMERA_RE.match(sn)
     if not m:
         raise ValueError(f"Camera serial {sn!r} does not match the rule XC<batch><line><seq><m|s> (e.g. XCA24Z0003m).")
-    return side_of_sequence(m.group(1)), _PATCH_ROLE[m.group(2)]
+    return side_of_sequence(m.group(1)), _PATCH_ROLE[m.group(2).lower()]
 
 
 def _byid_serials(extract_re: re.Pattern) -> list[str]:
