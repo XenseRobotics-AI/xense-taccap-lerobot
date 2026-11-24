@@ -161,11 +161,13 @@ def test_read_sensor_data_rotates_every_image_output_the_same_way():
     force = np.ones((35, 20, 3), dtype=np.float32)
 
     class FakeOutputType:
-        Rectify, AugDifference, Depth, Force = "rectify", "diff", "depth", "force"
-        Marker2D = ForceNorm = ForceResultant = Mesh3D = Mesh3DInit = Mesh3DFlow = "other"
+        """Any SDK output type the driver maps resolves to its own name."""
+
+        def __getattr__(self, name):
+            return name.lower()
 
     class FakeSensorModule:
-        OutputType = FakeOutputType
+        OutputType = FakeOutputType()
 
     class FakeSensor:
         def selectSensorInfo(self, *types):  # noqa: N802 - SDK spelling
