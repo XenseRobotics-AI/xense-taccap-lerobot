@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # Matches compose.yaml's default image name, so this packages whatever
 # `docker compose build` just produced.
-IMAGE_REPOSITORY="${XENSE_IMAGE_REPOSITORY:-ghcr.io/xenserobotics-ai/xense-taccap-lerobot}"
+IMAGE_REPOSITORY="${LEROBOT_IMAGE:-${XENSE_IMAGE_REPOSITORY:-ghcr.io/xenserobotics-ai/xense-taccap-lerobot}}"
 IMAGE_TAG="${1:-${LEROBOT_IMAGE_TAG:-latest}}"
 IMAGE_REF="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 DIST_ROOT="${XENSE_DIST_DIR:-${ROOT_DIR}/dist/customer}"
@@ -45,8 +45,9 @@ means building it under that tag in the first place:
     LEROBOT_IMAGE_TAG=0.0.4 ./docker/package_customer_delivery.sh
 
 Environment:
-  XENSE_IMAGE_REPOSITORY   Image repository name
+  LEROBOT_IMAGE           Image repository name, matching docker compose build
                            (default: ${IMAGE_REPOSITORY})
+  XENSE_IMAGE_REPOSITORY   Legacy alias for LEROBOT_IMAGE
   XENSE_DIST_DIR           Output root (default: dist/customer)
   XENSE_FORCE_PACKAGE=1    Allow overwriting an existing image archive
 EOF
@@ -78,6 +79,7 @@ main() {
 
   log "Saving ${IMAGE_REF} to ${ARCHIVE_PATH}"
   docker save --output "${ARCHIVE_PATH}" "${IMAGE_REF}"
+  chmod 0644 "${ARCHIVE_PATH}"
 
   (
     cd "${BUNDLE_DIR}"
@@ -85,15 +87,23 @@ main() {
   )
 
   install -m 0644 "${ROOT_DIR}/compose.yaml" "${BUNDLE_DIR}/compose.yaml"
-  install -m 0644 "${ROOT_DIR}/docker/README.md" "${BUNDLE_DIR}/DOCKER_README_ZH.md"
+  install -m 0644 "${ROOT_DIR}/docker/CUSTOMER_README_ZH.md" "${BUNDLE_DIR}/README.md"
   install -m 0755 "${ROOT_DIR}/docker/install_customer.sh" "${BUNDLE_DIR}/install_customer.sh"
-  printf 'LEROBOT_IMAGE_TAG=%s\n' "${IMAGE_TAG}" > "${BUNDLE_DIR}/.env"
-  printf 'LEROBOT_IMAGE_TAG=%s\n' "${IMAGE_TAG}" > "${BUNDLE_DIR}/delivery.env"
+  printf '%s\n' '#!/usr/bin/env bash' 'set -euo pipefail' \
+    'cd "$(dirname "${BASH_SOURCE[0]}")"' \
+    'XENSE_MIRROR=cn exec bash ./install_customer.sh "$@"' > "${BUNDLE_DIR}/install_cn.sh"
+  chmod 0755 "${BUNDLE_DIR}/install_cn.sh"
+  printf 'LEROBOT_IMAGE=%s\nLEROBOT_IMAGE_TAG=%s\n' "${IMAGE_REPOSITORY}" "${IMAGE_TAG}" > "${BUNDLE_DIR}/.env"
+  cp "${BUNDLE_DIR}/.env" "${BUNDLE_DIR}/delivery.env"
+  # Keep subsequent customer launches local too, including a floating latest tag.
+  printf 'services:\n  xense-taccap:\n    pull_policy: never\n' > "${BUNDLE_DIR}/compose.override.yaml"
 
   log "Customer delivery package is ready:"
   log "  ${BUNDLE_DIR}"
   log "Copy the entire directory to the customer machine, then run:"
   log "  ./install_customer.sh"
+  log "For a host with domestic network access only:"
+  log "  XENSE_MIRROR=cn ./install_customer.sh"
 }
 
 main "$@"
